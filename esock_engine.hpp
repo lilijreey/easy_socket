@@ -1,0 +1,206 @@
+/**
+ * @file     esock_engine.hpp
+ *           
+ *
+ * @author   lili <lilijreey@gmail.com>
+ * @date     01/05/2019 01:31:52 PM
+ *
+ */
+
+#pragma once
+
+#include <string>
+#include <chrono>
+
+#include <sys/epoll.h>
+#include "esock_error.hpp"
+//#include "esock_socket.hpp"
+#include "detail/esock_utility.hpp"
+//#include "esock_tcp_server.hpp"
+
+namespace esock {
+
+class net_engine_t;
+class tcp_server_t;
+struct sockinfo_t;
+
+/**
+ * 回调类型
+ */
+//tcp_client cb
+using on_tcp_conn_complete_fn_t = void(*)(net_engine_t *eng, const char *ip, const uint16_t port, int sock, void *arg);
+using on_tcp_conn_failed_fn_t   = void(*)(net_engine_t *eng, const char *ip, const uint16_t port, const int err, void *arg);
+
+//tcp_server cb
+using on_tcp_listen_ok_fn_t       = void(*)(net_engine_t *eng, tcp_server_t *svr, void *user_arg);
+using on_tcp_listen_failed_fn_t   = void(*)(net_engine_t *eng, const std::string &ip, const uint16_t port, const int errno, void *user_arg);
+using on_tcp_accept_complete_fn_t = void(*)(net_engine_t *eng, tcp_server_t *svr, int sock, void *user_arg);
+using on_tcp_accept_failed_fn_t   = void(*)(net_engine_t *eng, tcp_server_t *svr, int errno, void *user_arg);
+
+//tcp connect cb
+using on_tcp_conn_recvable_fn_t = void(*)(net_engine_t *eng, int sock, int _event, void *arg);
+using on_tcp_conn_sendable_fn_t = void(*)(net_engine_t *eng, int sock, int _event, void *arg);
+
+
+enum sockevent_t
+{
+  ESOCK_EV_RECVABLE = 1,
+  ESOCK_EV_SENDABLE = 2,
+  ESOCK_EV_ERROR = 4,
+};
+
+
+class net_engine_t : detail::noncopyable_t
+{
+ public:
+  //using on_recvable_fn_t = void(*)(int fd, sock);
+  //using on_sendable_fn_t = void(*)(int fd, sock);
+
+ public:
+  static net_engine_t * make();
+  static void unmake(net_engine_t *&eng);
+
+ public:
+  ~net_engine_t();
+
+
+ public: //client
+  void async_tcp_connect(const std::string &ip, 
+                        const uint16_t port, 
+                        on_tcp_conn_complete_fn_t, 
+                        on_tcp_conn_failed_fn_t,
+                        void *user_arg=nullptr);
+
+  //发起异步链接请求
+  //面向OO T 类型必须继承tcp_connect_hanndler_t
+  template <class async_tcp_connect_hanndler_subclass>
+  void async_tcp_connect(const std::string &ip, 
+                         const uint16_t port, 
+                         async_tcp_connect_hanndler_subclass *ins);
+
+
+  //发起异步链接请求，当链接完成是把链接加入engine,管理并自动读取，写入数据
+  //类Proactor 模式.
+  
+  template <class async_tcp_client_hanndler_subclass>
+  void async_tcp_client(const std::string &ip,
+                        const uint16_t port,
+                        async_tcp_client_hanndler_subclass *ins);
+
+
+  //所有net_engine 返回的socket都不能直接使用::close, 而是调用下面的函数
+ public: 
+  //listen and accept new connect
+  void async_tcp_server(const std::string &ip,
+                        uint16_t port,
+                        on_tcp_accept_complete_fn_t,
+                        on_tcp_accept_failed_fn_t,
+                        void *user_arg=nullptr);
+
+
+  //void release_tcp_server(tcp_server_t *&svr) {tcp_server_t::unmake(svr);}
+
+ public:
+  bool is_runing() const {return not _is_stop;}
+  bool is_stop() const {return _is_stop;}
+
+ public: //process event
+  int process_event(std::chrono::milliseconds wait_event_ms);
+
+  int process_event_loop(std::chrono::milliseconds wait_event_ms)
+  {
+    while (is_runing()) {
+      if (-1 == process_event(wait_event_ms))
+        return -1;
+    }
+    return 0;
+  }
+
+ public:
+  //int add_listener(tcp_listener_t *);
+  //int add_connect(socket_t sock, on_recvable_fn_t);
+
+
+  //void release_connect(tcp_connect *& conn);
+
+  //~net_engine_t() {}
+  //net_engine_t();
+
+ private:
+  int init();
+
+ public:
+  //无法重复添加
+  //保证对应sockslot 已经设置正确
+  //当错误发送时调用readable 来发现错误,而不提供错误函数
+  int epoll_add_sock(int fd,
+                     int events, 
+                     void *on_recvable,
+                     void *on_sendable,
+                     void *arg);
+
+  //void epoll_del_sock(int fd);
+  void epoll_del_sock(sockinfo_t *sinfo);
+
+ public:
+  //所有esock函数返回的socket，必须调用该函数进行关闭
+  int close_socket(int fd);
+
+ private:
+  bool _is_stop = false;
+
+  //epoll
+ private:
+  enum {MAX_EVENT_SIZE=1024};
+
+ private:
+  int _efd = -1;
+  bool _is_process= false;
+  epoll_event _events[MAX_EVENT_SIZE];
+
+};
+
+
+static inline net_engine_t* make_net_engine() { return net_engine_t::make(); }
+static inline void unmake_net_engine(net_engine_t *&eng) { net_engine_t::unmake(eng); }
+
+} //end namespace
+
+
+#include "esock_tcp_connect.hpp"
+
+namespace esock {
+
+template <class async_tcp_connect_hanndler_subclass>
+void net_engine_t::async_tcp_connect(const std::string &ip, 
+                       const uint16_t port, 
+                       async_tcp_connect_hanndler_subclass *ins)
+{
+  using T = async_tcp_connect_hanndler_subclass;
+  async_tcp_connect(ip,
+                    port,
+                    T::on_conn_complete_helper,
+                    T::on_conn_failed_helper,
+                    ins);
+}
+
+
+//发起异步链接请求，当链接完成是把链接加入engine,管理并自动读取，写入数据
+//类Proactor 模式.
+
+template <class async_tcp_client_hanndler_subclass>
+void net_engine_t::async_tcp_client(const std::string &ip,
+                      const uint16_t port,
+                      async_tcp_client_hanndler_subclass *ins)
+{
+  using T = async_tcp_client_hanndler_subclass;
+  async_tcp_connect(ip,
+                    port,
+                    T::on_conn_complete_helper,
+                    T::on_conn_failed_helper,
+                    ins);
+}
+
+
+
+}
