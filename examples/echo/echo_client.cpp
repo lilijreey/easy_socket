@@ -28,6 +28,7 @@ class EchoClient
    void on_conn_complete(net_engine_t *eng, const char *ip, const uint16_t port, int sock)
    {
      printf("on conn %s:%d ok sock:%d\n", ip, port, sock);
+     sendPos = 0;
      //send hello word\n
      const char *msg = "hello world\n";
      sendDataLen = strlen(msg);
@@ -38,7 +39,9 @@ class EchoClient
    void on_conn_failed(net_engine_t *eng, const char *ip, const uint16_t port, const int err)
    {
      printf("on conn %s:%d failed reconnct %s\n", ip, port, strerror(err));
-     //TODO reconnect
+     sleep(1);
+     //reconnect
+     eng->async_tcp_client("127.0.0.1", 5566, this);
    }
  
    void on_recv_complete(net_engine_t *eng, int sock, const char *data, const ssize_t datalen)
@@ -46,26 +49,32 @@ class EchoClient
      //解包
      //最大message len 63
      //以\n结尾为一个message
+     recvPos += datalen;
      if (recvPos == MAX_BUF || data[datalen-1] == '\n')
      {
        ((char*)data)[recvPos]='\0';
        printf("recv msg:%s len:%d\n", recvBuf, recvPos);
+       recvPos = 0;
      }
    }
  
    void on_send_complete(net_engine_t *eng, int sock, const char *data, const ssize_t sendlen)
    {
-     if (sendBuf[sendlen-1] =='\n') //send msg finished
-       sendPos = 0;
-     else
        sendPos += sendlen;
-     assert(sendPos <= sendDataLen);
+       if (sendPos < sendDataLen)
+       {
+           printf("continue send :%d", sendPos);
+       }
+       assert(sendPos <= sendDataLen);
    }
  
    void on_peer_close(net_engine_t *eng, int sock)
    {
-     printf("sock:%d peer closed, close local", sock);
+     printf("sock:%d peer closed, close local, reconnect\n", sock);
      eng->close_socket(sock);
+     sleep(1);
+     eng->async_tcp_client("127.0.0.1", 5566, this);
+     //reconnect
    }
  
    void on_error_occur(net_engine_t *eng, int sock, int error)

@@ -24,7 +24,7 @@ namespace esock {
  * EchoServerConn: tcp_server_conn_hanndler_t<EchoServerConn> {
  *  //实现下面几个回调函数
  *
- *   如果在该回调中调用close_socket，则不会进行下面的调用
+ *  如果在该回调中调用close_socket，则不会进行下面的调用
  *  void on_recv_complete(net_engine_t *eng, int sock, const char *data, const ssize_t datalen);
  *
  *   发送完成数据是通知,一般用来更新buff
@@ -50,6 +50,7 @@ namespace esock {
 template <class subclass_t>
 struct tcp_server_conn_handler_t
 {
+
   static inline void on_conn_recvable_helper(net_engine_t *eng,
                                              int sock, 
                                              int event,
@@ -79,17 +80,32 @@ struct tcp_server_conn_handler_t
 
 };
 
-//定义一个tcp server,用于监听端口，并初始化连接对象
-//tcp_server_conn_t 必须是继承tcp_server_conn_handler_t的类型
+/**
+ * tcp server,用于监听端口，并初始化连接对象.
+ * tcp_server_conn_t 必须是继承tcp_server_conn_handler_t的类型
+ * 需要实现
+ * usage.
+ * <code>
+ * EchoServerConn: tcp_server_conn_hanndler_t<EchoServerConn> {
+ *  实现下面几个回调函数
+ *
+ *  返回一个链接实例，如果返回nullptr, 则会自动关闭链接.
+ *  如果在on_accept_complete中调用close_socket关闭了链接则必须返回nullptr
+ *  返回的连接对象，析构时必须关闭socket,如果需要转移socket和对象的所有关系
+ *  可以调用eng->swap_socket(fd, otherConn)
+ *  tcp_server_conn_t *on_accept_complete(net_engine_t *eng, tcp_listener_t *ins, int conn, sockaddr_storage addr);
+ *
+ *  accept 返回失败是调用
+ *  void on_accept_failed(net_engine_t *eng, tcp_listener_t *ins, int error);
+ * }
+ *
+ */
 
 template <class subclass_t, class tcp_server_conn_t>
 struct tcp_server_handler_t
 {
-  //subclass 请实现
-  //返回一个链接势力，如果返回nullptr, 则不会把该链接加入eng中，进行管理
-  //如果在on_accept_complete中调用close_socket关闭了链接则必须返回nullptr
   //tcp_server_conn_t *on_accept_complete(net_engine_t *eng, tcp_listener_t *ins, int conn, sockaddr_storage addr);
-  //void on_accept_failed(net_engine_t *eng, tcp_listener_t *ins, int errno);
+  //void on_accept_failed(net_engine_t *eng, tcp_listener_t *ins, int error);
 
   static void on_tcp_acceptable(net_engine_t *eng, tcp_listener_t *ins, int listen_fd, void *arg)
   {

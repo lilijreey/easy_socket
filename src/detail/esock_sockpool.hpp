@@ -12,7 +12,6 @@ namespace esock {
 
 enum sockinfo_type_t {
   ESOCKTYPE_NONE=0,
-  ESOCKTYPE_EPOLL=1,
   ESOCKTYPE_TCP_LISTENER=2,
   ESOCKTYPE_TCP_CONNECT=3
 };

@@ -46,6 +46,7 @@ void sockpool_t::uninit()
   esock_assert(_ref > 0);
   if (--_ref == 0)
   {
+      esock_debug_log("free sockpool");
     free(_socks);
     _socks = 0;
     _size = 0;
@@ -67,6 +68,7 @@ void sockinfo_t::close(int sock) {
   }
 
 
+  errno = 0;
   while (::close(sock) == -1 && errno == EINTR) {
     ;
   }

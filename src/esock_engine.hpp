@@ -98,6 +98,7 @@ class net_engine_t : detail::noncopyable_t
   bool is_runing() const {return not _is_stop;}
   bool is_stop() const {return _is_stop;}
 
+
  public: //process event
   int process_event(std::chrono::milliseconds wait_event_ms);
 
@@ -109,6 +110,8 @@ class net_engine_t : detail::noncopyable_t
     }
     return 0;
   }
+
+  void stop_event_loop() {_is_stop = true;}
 
 
  private:

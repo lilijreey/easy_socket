@@ -51,6 +51,10 @@ static inline tcp_listener_t* make_tcp_listener(const std::string &ip, uint16_t 
   return tcp_listener_t::make(ip, port);
 }
 
+static inline void unmake_tcp_listener(tcp_listener_t *&ins)
+{
+    tcp_listener_t::unmake(ins);
+}
 
 } //end namespace
 
