@@ -23,6 +23,12 @@ tcp_listener_t *tcp_listener_t::make(const std::string &ip, uint16_t port)
     return obj;
 }
 
+void tcp_listener_t::unmake(tcp_listener_t *&listener)
+{
+    delete listener;
+    listener = nullptr;
+}
+
 tcp_listener_t::~tcp_listener_t()
 {
   if (_listen_fd != -1)
@@ -51,6 +57,13 @@ int tcp_listener_t::init(const std::string &ip, uint16_t port)
     if (-1 == _listen_fd)
     {
         esock_set_error_msg("create socket failed ");
+        return -1;
+    }
+
+    if (-1 == set_sock_nonblocking(_listen_fd))
+    {
+        esock_set_syserr_msg("set nonblocking fd %d failed, close it", _listen_fd);
+        ::close(_listen_fd);
         return -1;
     }
 

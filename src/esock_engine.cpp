@@ -298,7 +298,7 @@ void net_engine_t::epoll_del_sock(sockinfo_t *sinfo)
   epoll_event _ev;//2.6.9 before need
   if (-1 == epoll_ctl(_efd, EPOLL_CTL_DEL, fd, &_ev))
   {
-    esock_set_syserr_msg("epoll_ctl del fd %d failed", fd);
+    esock_set_syserr_msg("epoll_ctl del fd %d failed\n", fd);
   }
 
   sinfo->_is_in_epoll = 0;

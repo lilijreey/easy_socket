@@ -67,6 +67,7 @@ void sockinfo_t::close(int sock) {
   }
 
 
+  errno = 0;
   while (::close(sock) == -1 && errno == EINTR) {
     ;
   }
