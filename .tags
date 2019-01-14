@@ -1,0 +1,116 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_OUTPUT_MODE	u-ctags	/u-ctags or e-ctags/
+!_TAG_PROGRAM_AUTHOR	Universal Ctags Team	//
+!_TAG_PROGRAM_NAME	Universal Ctags	/Derived from Exuberant Ctags/
+!_TAG_PROGRAM_URL	https://ctags.io/	/official site/
+!_TAG_PROGRAM_VERSION	0.0.0	//
+ESOCKSTATE_CLOSED	detail/esock_sockpool.hpp	/^  ESOCKSTATE_CLOSED = 0,$/;"	e	enum:esock::sockinfo_state_t
+ESOCKSTATE_CONNECTION	detail/esock_sockpool.hpp	/^  ESOCKSTATE_CONNECTION = 3, \/\/connect 返回EINPROGRESS $/;"	e	enum:esock::sockinfo_state_t
+ESOCKSTATE_CREATE	detail/esock_sockpool.hpp	/^  ESOCKSTATE_CREATE = 1, \/\/完成socket 创建$/;"	e	enum:esock::sockinfo_state_t
+ESOCKSTATE_ERROR_OCCUES	detail/esock_sockpool.hpp	/^  ESOCKSTATE_ERROR_OCCUES = 5, \/\/有错误发生$/;"	e	enum:esock::sockinfo_state_t
+ESOCKSTATE_ESTABLISHED	detail/esock_sockpool.hpp	/^  ESOCKSTATE_ESTABLISHED = 4,$/;"	e	enum:esock::sockinfo_state_t
+ESOCKSTATE_LISTENING	detail/esock_sockpool.hpp	/^  ESOCKSTATE_LISTENING = 2, \/\/调用listener$/;"	e	enum:esock::sockinfo_state_t
+ESOCKTYPE_EPOLL	detail/esock_sockpool.hpp	/^  ESOCKTYPE_EPOLL=1,$/;"	e	enum:esock::sockinfo_type_t
+ESOCKTYPE_NONE	detail/esock_sockpool.hpp	/^  ESOCKTYPE_NONE=0,$/;"	e	enum:esock::sockinfo_type_t
+ESOCKTYPE_TCP_CONNECT	detail/esock_sockpool.hpp	/^  ESOCKTYPE_TCP_CONNECT=3$/;"	e	enum:esock::sockinfo_type_t
+ESOCKTYPE_TCP_LISTENER	detail/esock_sockpool.hpp	/^  ESOCKTYPE_TCP_LISTENER=2,$/;"	e	enum:esock::sockinfo_type_t
+EchoClient	main.cpp	/^class EchoClient :$/;"	c	file:
+MAX_EVENT_SIZE	esock_engine.hpp	/^  enum {MAX_EVENT_SIZE=1024};$/;"	e	enum:esock::net_engine_t::__anon8c2c37c50103
+__anon8c2c37c50103	esock_engine.hpp	/^  enum {MAX_EVENT_SIZE=1024};$/;"	g	class:esock::net_engine_t
+_arg	detail/esock_sockpool.hpp	/^  void *_arg;$/;"	m	struct:esock::sockinfo_t	typeref:typename:void *
+_efd	esock_engine.hpp	/^  int _efd = -1;$/;"	m	class:esock::net_engine_t	typeref:typename:int
+_eng	detail/esock_sockpool.hpp	/^  net_engine_t *_eng;$/;"	m	struct:esock::sockinfo_t	typeref:typename:net_engine_t *
+_events	esock_engine.hpp	/^  epoll_event _events[MAX_EVENT_SIZE];$/;"	m	class:esock::net_engine_t	typeref:typename:epoll_event[]
+_instance	detail/esock_sockpool.hpp	/^  uint8_t _instance:1; $/;"	m	struct:esock::sockinfo_t	typeref:typename:uint8_t:1
+_ip	esock_tcp_server.hpp	/^  std::string _ip;$/;"	m	class:esock::tcp_server_t	typeref:typename:std::string
+_is_in_epoll	detail/esock_sockpool.hpp	/^  uint8_t _is_in_epoll:1; $/;"	m	struct:esock::sockinfo_t	typeref:typename:uint8_t:1
+_is_process	esock_engine.hpp	/^  bool _is_process= false;$/;"	m	class:esock::net_engine_t	typeref:typename:bool
+_is_stop	esock_engine.hpp	/^  bool _is_stop = false;$/;"	m	class:esock::net_engine_t	typeref:typename:bool
+_listen_fd	esock_tcp_server.hpp	/^  int _listen_fd = -1;$/;"	m	class:esock::tcp_server_t	typeref:typename:int
+_on_recvable_fn	detail/esock_sockpool.hpp	/^  void * _on_recvable_fn;$/;"	m	struct:esock::sockinfo_t	typeref:typename:void *
+_on_sendable_fn	detail/esock_sockpool.hpp	/^  void * _on_sendable_fn;$/;"	m	struct:esock::sockinfo_t	typeref:typename:void *
+_port	esock_tcp_server.hpp	/^  uint16_t _port=0;$/;"	m	class:esock::tcp_server_t	typeref:typename:uint16_t
+_ref	detail/esock_sockpool.hpp	/^  int _ref=0;$/;"	m	struct:esock::sockpool_t	typeref:typename:int
+_size	detail/esock_sockpool.hpp	/^  size_t     _size{};$/;"	m	struct:esock::sockpool_t	typeref:typename:size_t
+_socks	detail/esock_sockpool.hpp	/^  sockinfo_t *_socks{};$/;"	m	struct:esock::sockpool_t	typeref:typename:sockinfo_t *
+_state	detail/esock_sockpool.hpp	/^  uint8_t _state;$/;"	m	struct:esock::sockinfo_t	typeref:typename:uint8_t
+_type	detail/esock_sockpool.hpp	/^  uint8_t _type;$/;"	m	struct:esock::sockinfo_t	typeref:typename:uint8_t
+all	Makefile	/^all: main$/;"	t
+async_tcp_connect	esock_engine.cpp	/^void net_engine_t::async_tcp_connect(const std::string &ip, $/;"	f	class:esock::net_engine_t	typeref:typename:void
+async_tcp_connect	esock_engine.hpp	/^  void async_tcp_connect(const std::string &ip, $/;"	f	class:esock::net_engine_t	typeref:typename:void
+async_tcp_server	esock_engine.cpp	/^void net_engine_t::async_tcp_server(const std::string &ip,$/;"	f	class:esock::net_engine_t	typeref:typename:void
+close	detail/esock_sockpool.hpp	/^  void close(int sock) {$/;"	f	struct:esock::sockinfo_t	typeref:typename:void
+close_connect	esock_engine.cpp	/^int net_engine_t::close_connect(int fd)$/;"	f	class:esock::net_engine_t	typeref:typename:int
+close_socket	detail/esock_sockpool.hpp	/^static inline void close_socket(int fd) { sockpool.get_info(fd)->close(fd); }$/;"	f	namespace:esock	typeref:typename:void
+detail	detail/esock_utility.hpp	/^namespace esock { namespace detail {$/;"	n	namespace:esock
+detail	esock_error.hpp	/^namespace detail {$/;"	n	namespace:esock
+epoll_add_sock	esock_engine.cpp	/^int net_engine_t::epoll_add_sock(int sock,$/;"	f	class:esock::net_engine_t	typeref:typename:int
+epoll_del_sock	esock_engine.cpp	/^void net_engine_t::epoll_del_sock(sockinfo_t *sinfo)$/;"	f	class:esock::net_engine_t	typeref:typename:void
+error_msg	detail/esock_sockpool.cpp	/^__thread char error_msg[4096];$/;"	v	namespace:esock	typeref:typename:__thread char[4096]
+esock	detail/esock_sockpool.cpp	/^namespace esock { $/;"	n	file:
+esock	detail/esock_sockpool.hpp	/^namespace esock {$/;"	n
+esock	detail/esock_utility.hpp	/^namespace esock { namespace detail {$/;"	n
+esock	esock_engine.cpp	/^namespace esock {$/;"	n	file:
+esock	esock_engine.hpp	/^namespace esock {$/;"	n
+esock	esock_error.hpp	/^namespace esock { $/;"	n
+esock	esock_socket.hpp	/^namespace esock {$/;"	n
+esock	esock_tcp_connect.hpp	/^namespace esock {$/;"	n
+esock	esock_tcp_server.hpp	/^namespace esock {$/;"	n
+esock_assert	detail/esock_utility.hpp	/^#define esock_assert(/;"	d
+esock_debug_log	esock_error.hpp	/^#define esock_debug_log /;"	d
+esock_set_error_msg	esock_error.hpp	/^#define esock_set_error_msg(/;"	d
+esock_set_syserr_msg	esock_error.hpp	/^#define esock_set_syserr_msg(/;"	d
+get_fd	detail/esock_sockpool.hpp	/^inline int sockinfo_t::get_fd() const {return this - sockpool._socks;}$/;"	f	class:esock::sockinfo_t	typeref:typename:int
+get_info	detail/esock_sockpool.hpp	/^  sockinfo_t* get_info(int fd) {$/;"	f	struct:esock::sockpool_t	typeref:typename:sockinfo_t *
+get_socket_error	esock_socket.hpp	/^static inline int get_socket_error(int fd)$/;"	f	namespace:esock	typeref:typename:int
+init	detail/esock_sockpool.cpp	/^int sockpool_t::init() {$/;"	f	class:esock::sockpool_t	typeref:typename:int
+init	detail/esock_sockpool.hpp	/^  void init(sockinfo_type_t type)$/;"	f	struct:esock::sockinfo_t	typeref:typename:void
+init	esock_engine.cpp	/^int net_engine_t::init()$/;"	f	class:esock::net_engine_t	typeref:typename:int
+is_closed	detail/esock_sockpool.hpp	/^  bool is_closed() const {$/;"	f	struct:esock::sockinfo_t	typeref:typename:bool
+is_runing	esock_engine.hpp	/^  bool is_runing() const {return not _is_stop;}$/;"	f	class:esock::net_engine_t	typeref:typename:bool
+is_stop	esock_engine.hpp	/^  bool is_stop() const {return _is_stop;}$/;"	f	class:esock::net_engine_t	typeref:typename:bool
+main	Makefile	/^main: main.cpp esock_engine.cpp detail\/esock_sockpool.cpp$/;"	t
+main	main.cpp	/^int main()$/;"	f	typeref:typename:int
+make	esock_engine.cpp	/^net_engine_t * net_engine_t::make()$/;"	f	class:esock::net_engine_t	typeref:typename:net_engine_t *
+make	esock_tcp_server.hpp	/^  static tcp_server_t* make(const std::string &ip, uint16_t port)$/;"	f	class:esock::tcp_server_t	typeref:typename:tcp_server_t *
+make_net_engine	esock_engine.hpp	/^static inline net_engine_t* make_net_engine() { return net_engine_t::make(); }$/;"	f	namespace:esock	typeref:typename:net_engine_t *
+net_engine_t	esock_engine.hpp	/^class net_engine_t : detail::noncopyable_t$/;"	c	namespace:esock
+noncopyable_t	detail/esock_utility.hpp	/^	noncopyable_t() {}$/;"	f	class:esock::detail::noncopyable_t
+noncopyable_t	detail/esock_utility.hpp	/^class noncopyable_t {$/;"	c	namespace:esock::detail
+on_conn_complete	main.cpp	/^  void on_conn_complete(net_engine_t *eng, const char *ip, const uint16_t port, int sock)$/;"	f	class:EchoClient	typeref:typename:void	file:
+on_conn_complete_helper	esock_tcp_connect.hpp	/^  static inline void on_conn_complete_helper(net_engine_t *eng, const char *ip, const uint16_t p/;"	f	struct:esock::tcp_connect_hanndler_t	typeref:typename:void
+on_conn_failed	main.cpp	/^  void on_conn_failed(net_engine_t *eng, const char *ip, const uint16_t port, const int err)$/;"	f	class:EchoClient	typeref:typename:void	file:
+on_conn_failed_helper	esock_tcp_connect.hpp	/^  static inline void on_conn_failed_helper(net_engine_t *eng, const char *ip, const uint16_t por/;"	f	struct:esock::tcp_connect_hanndler_t	typeref:typename:void
+on_tcp_accept_complete_fn_t	esock_tcp_server.hpp	/^using on_tcp_accept_complete_fn_t = void(*)(net_engine_t *eng, tcp_server_t *svr, int sock, void/;"	t	namespace:esock
+on_tcp_accept_conn_complete	main.cpp	/^void on_tcp_accept_conn_complete(net_engine_t *eng, tcp_server_t *svr, int sock, void *user_arg)$/;"	f	typeref:typename:void
+on_tcp_accept_conn_failed	main.cpp	/^void on_tcp_accept_conn_failed(net_engine_t *eng, tcp_server_t *svr, int errno, void *user_arg)$/;"	f	typeref:typename:void
+on_tcp_accept_failed_fn_t	esock_tcp_server.hpp	/^using on_tcp_accept_failed_fn_t   = void(*)(net_engine_t *eng, tcp_server_t *svr, int errno, voi/;"	t	namespace:esock
+on_tcp_conn_complete	main.cpp	/^  void on_tcp_conn_complete(net_engine_t *eng, const char *ip, const uint16_t port, int sock, vo/;"	f	typeref:typename:void
+on_tcp_conn_complete_fn_t	esock_tcp_connect.hpp	/^using on_tcp_conn_complete_fn_t = void(*)(net_engine_t *eng, const char *ip, const uint16_t port/;"	t	namespace:esock
+on_tcp_conn_failed	main.cpp	/^  void on_tcp_conn_failed(net_engine_t *eng,  const char *ip, const uint16_t port, const int err/;"	f	typeref:typename:void
+on_tcp_conn_failed_fn_t	esock_tcp_connect.hpp	/^using on_tcp_conn_failed_fn_t   = void(*)(net_engine_t *eng, const char *ip, const uint16_t port/;"	t	namespace:esock
+on_tcp_listen_failed	main.cpp	/^void on_tcp_listen_failed(net_engine_t *eng, const std::string &ip, const uint16_t port, const i/;"	f	typeref:typename:void
+on_tcp_listen_failed_fn_t	esock_tcp_server.hpp	/^using on_tcp_listen_failed_fn_t   = void(*)(net_engine_t *eng, const std::string &ip, const uint/;"	t	namespace:esock
+on_tcp_listen_ok	main.cpp	/^void on_tcp_listen_ok(net_engine_t *eng, tcp_server_t *svr, void *user_arg)$/;"	f	typeref:typename:void
+on_tcp_listen_ok_fn_t	esock_tcp_server.hpp	/^using on_tcp_listen_ok_fn_t       = void(*)(net_engine_t *eng, tcp_server_t *svr, void *user_arg/;"	t	namespace:esock
+port	main.cpp	/^  int port;$/;"	m	class:EchoClient	typeref:typename:int	file:
+process_event	esock_engine.cpp	/^int net_engine_t::process_event(std::chrono::milliseconds wait_event_ms)$/;"	f	class:esock::net_engine_t	typeref:typename:int
+process_event_loop	esock_engine.hpp	/^  int process_event_loop(std::chrono::milliseconds wait_event_ms)$/;"	f	class:esock::net_engine_t	typeref:typename:int
+release_tcp_server	esock_engine.hpp	/^  void release_tcp_server(tcp_server_t *&svr) {tcp_server_t::unmake(svr);}$/;"	f	class:esock::net_engine_t	typeref:typename:void
+set_socket_nonblocking	esock_socket.hpp	/^static inline int set_socket_nonblocking(int sock) {$/;"	f	namespace:esock	typeref:typename:int
+sock	main.cpp	/^  int sock;$/;"	m	class:EchoClient	typeref:typename:int	file:
+sockinfo_state_t	detail/esock_sockpool.hpp	/^enum sockinfo_state_t {$/;"	g	namespace:esock
+sockinfo_t	detail/esock_sockpool.hpp	/^struct sockinfo_t$/;"	s	namespace:esock
+sockinfo_type_t	detail/esock_sockpool.hpp	/^enum sockinfo_type_t {$/;"	g	namespace:esock
+sockpool	detail/esock_sockpool.cpp	/^sockpool_t sockpool;$/;"	v	namespace:esock	typeref:typename:sockpool_t
+sockpool_t	detail/esock_sockpool.hpp	/^struct sockpool_t : detail::noncopyable_t$/;"	s	namespace:esock
+tcp_connect_hanndler_t	esock_tcp_connect.hpp	/^struct tcp_connect_hanndler_t$/;"	s	namespace:esock
+tcp_server_t	esock_tcp_server.hpp	/^  tcp_server_t(const std::string &ip, uint16_t port) {$/;"	f	class:esock::tcp_server_t
+tcp_server_t	esock_tcp_server.hpp	/^class tcp_server_t : detail::noncopyable_t $/;"	c	namespace:esock
+uninit	detail/esock_sockpool.cpp	/^void sockpool_t::uninit()$/;"	f	class:esock::sockpool_t	typeref:typename:void
+unmake	esock_engine.cpp	/^void net_engine_t::unmake(net_engine_t *&eng)$/;"	f	class:esock::net_engine_t	typeref:typename:void
+unmake	esock_tcp_server.hpp	/^  static void unmake(tcp_server_t *&svr)$/;"	f	class:esock::tcp_server_t	typeref:typename:void
+unmake_net_engine	esock_engine.hpp	/^static inline void unmake_net_engine(net_engine_t *&eng) { net_engine_t::unmake(eng); }$/;"	f	namespace:esock	typeref:typename:void
+~net_engine_t	esock_engine.cpp	/^net_engine_t::~net_engine_t()$/;"	f	class:esock::net_engine_t
+~noncopyable_t	detail/esock_utility.hpp	/^	~noncopyable_t() {}$/;"	f	class:esock::detail::noncopyable_t

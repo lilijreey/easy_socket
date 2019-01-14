@@ -9,6 +9,8 @@
 
 
 #pragma once
+
+
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/socket.h>
@@ -16,7 +18,7 @@
 namespace esock {
 
 
-static inline int set_socket_nonblocking(int sock) {
+static inline int set_sock_nonblocking(int sock) {
     int flags = fcntl(sock, F_GETFL, 0);
     if (-1 == flags)
       return -1;
@@ -26,7 +28,7 @@ static inline int set_socket_nonblocking(int sock) {
     return fcntl(sock, F_SETFL, flags);
 }
 
-static inline int get_socket_error(int fd)
+static inline int get_sock_error(int fd)
 {
     int val;
     socklen_t len = sizeof(val);
@@ -35,6 +37,12 @@ static inline int get_socket_error(int fd)
         return -1;
     }
     return val;
+}
+
+static inline int set_sock_reuseaddr(int sock)
+{
+  int opt = 1;
+  return setsockopt(sock, SOL_SOCKET,  SO_REUSEADDR, &opt, sizeof(opt));
 }
 
 //TODO

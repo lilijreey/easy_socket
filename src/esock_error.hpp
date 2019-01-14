@@ -7,17 +7,17 @@
  *
  */
 
-#pragma onece
+#pragma once
 #include <string.h>
 #include <stdio.h>
 
 namespace esock { 
 
 namespace detail {
-#define esock_set_error_msg(fmt, ...) printf("%s:%d [%s] " fmt "\n", __FILE__, __LINE__, __func__, __VA_ARGS__);
+#define esock_set_error_msg(fmt, ...) printf("%s:%d [%s] " fmt "\n", __FILE__, __LINE__, __func__, ##__VA_ARGS__);
 
 #define esock_set_syserr_msg(fmt, ...) \
-  printf("%s:%d [%s] (syserr:%s) " fmt "\n", __FILE__, __LINE__, __func__, strerror(errno), __VA_ARGS__)
+  printf("%s:%d [%s] (syserr:%s) " fmt "\n", __FILE__, __LINE__, __func__, strerror(errno), ##__VA_ARGS__)
 
 #define esock_debug_log printf
 //extern __local int  esock_errno;

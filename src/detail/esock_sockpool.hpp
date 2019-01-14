@@ -27,6 +27,8 @@ enum sockinfo_state_t {
 };
 
 
+//所有esock函数返回的socket，必须调用该函数进行关闭
+int close_socket(int sock);
 
 class net_engine_t;
 struct sockinfo_t
@@ -71,32 +73,33 @@ struct sockinfo_t
 };
 
 
-struct sockpool_t : detail::noncopyable_t
+class sockpool_t : detail::noncopyable_t
 {
- public:
-  sockinfo_t *_socks{};
-  size_t     _size{};
-
-
-  sockinfo_t* get_info(int fd) {
-    if (fd > _size) return nullptr;
-    return _socks + fd;
-  }
 
  private:
   int init();
   void uninit();
 
+ private:
+  sockinfo_t *_socks{};
+  int         _size{};
+
+ public:
+  sockinfo_t* get_info(int fd) {
+    if (fd > _size) return nullptr;
+    return _socks + fd;
+  }
+
+  friend class sockinfo_t;
   friend class net_engine_t;
+
  private:
   int _ref=0;
   
 };
 
+extern sockpool_t sockpool; //gloabl varibale
 
-extern sockpool_t sockpool;
-
-inline int sockinfo_t::get_fd() const {return this - sockpool._socks;}
 //static inline void close_socket(int fd) { sockpool.get_info(fd)->close(fd); }
 
 } //namespace

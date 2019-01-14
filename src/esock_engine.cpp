@@ -21,7 +21,6 @@ namespace esock {
 
 net_engine_t * net_engine_t::make()
 {
-  int ret = 0;
   net_engine_t *eng = new (std::nothrow) net_engine_t();
   if (eng == nullptr)
     return nullptr;
@@ -98,7 +97,7 @@ void net_engine_t::async_tcp_connect(const std::string &ip,
   sinfo = sockpool.get_info(sock);
   sinfo->init(ESOCKTYPE_TCP_CONNECT); //TODO init 和socket内聚到一个函数中
 
-  if (-1 == set_socket_nonblocking(sock)) {
+  if (-1 == set_sock_nonblocking(sock)) {
     esock_set_syserr_msg("set socket %d nonblock failed", sock);
     goto error;
   }
@@ -126,26 +125,6 @@ error:
   if (sock != -1) close_socket(sock);
   on_conn_failed_fn(this, ip.c_str(), port, errno, user_arg);
 
-}
-
-
-void net_engine_t::async_tcp_server(const std::string &ip,
-                                    uint16_t port,
-                                    on_tcp_listen_ok_fn_t on_listen_ok_cb,
-                                    on_tcp_listen_failed_fn_t on_listen_failed_cb,
-                                    on_tcp_accept_complete_fn_t on_accept_ok_cb,
-                                    on_tcp_accept_failed_fn_t on_accept_failed_cb,
-                                    void *user_arg)
-{
-
-  //TODO
-  //tcp_listener_t *l = tcp_listener_t::make("127.0.0.1",
-  //                                         "4455",
-  //                                         on_aceept_ok,
-  //                                         on_accept_failed,
-  //                                         );
-  //l.start_listen();
-  //net_engin.add_listener(l, on_aceept_ok, on_aceept_failed);
 }
 
 
@@ -212,7 +191,6 @@ int net_engine_t::process_event(std::chrono::milliseconds wait_event_ms)
   }
 
   sockinfo_t *sinfo = nullptr;
-  int fd = -1;
   for (int i =0; i < ev_cnt; ++i)
   {
     //批处理时需要正确处理  see epoll(7)
@@ -225,7 +203,7 @@ int net_engine_t::process_event(std::chrono::milliseconds wait_event_ms)
 
     int instance = (uintptr_t) p & 1;
     sinfo = (sockinfo_t*) ((uintptr_t) p & (uintptr_t) ~1);
-    fd = sinfo->get_fd();
+    int fd = sinfo->get_fd();
     esock_debug_log("fd %d has ev\n", fd);
 
     if (sinfo->is_closed()) {
@@ -260,22 +238,25 @@ int net_engine_t::process_event(std::chrono::milliseconds wait_event_ms)
         close_socket(fd);
         continue;
       case ESOCKTYPE_TCP_LISTENER:
-            //((tcp_listener_t*)sinfo->_arg)->accept();
-            continue;
+        ((on_tcp_listener_acceptable_fn_t)sinfo->_on_recvable_fn)(this,
+                                                                  static_cast<tcp_listener_t*>(sinfo->_on_recvable_fn),
+                                                                  fd, 
+                                                                  sinfo->_arg);
+        continue;
 
       case ESOCKTYPE_TCP_CONNECT:
-            if (sinfo->_state == ESOCKSTATE_CONNECTING) {
-              //error
-              sinfo->_state = ESOCKSTATE_ERROR_OCCUES;
-              int error = get_socket_error(fd);
-              //TODO IP
-              ((on_tcp_conn_failed_fn_t)sinfo->_on_recvable_fn)(this, nullptr, 0, error, sinfo->_arg);
-              close_socket(fd);
-              continue;
-            }
+        if (sinfo->_state == ESOCKSTATE_CONNECTING) {
+          //error
+          sinfo->_state = ESOCKSTATE_ERROR_OCCUES;
+          int error = get_sock_error(fd);
+          //TODO IP
+          ((on_tcp_conn_failed_fn_t)sinfo->_on_recvable_fn)(this, nullptr, 0, error, sinfo->_arg);
+          close_socket(fd);
+          continue;
+        }
 
-            ((on_tcp_conn_recvable_fn_t)sinfo->_on_recvable_fn)(this, fd, 0, sinfo->_arg);
-            break;
+        ((on_tcp_conn_recvable_fn_t)sinfo->_on_recvable_fn)(this, fd, 0, sinfo->_arg);
+        break;
 
       default:
             esock_assert(false);
@@ -289,13 +270,6 @@ int net_engine_t::process_event(std::chrono::milliseconds wait_event_ms)
       continue;
 
     if (events & EPOLLOUT) switch (sinfo->_type) {
-    case ESOCKTYPE_NONE:
-    case ESOCKTYPE_EPOLL:
-    case ESOCKTYPE_TCP_LISTENER:
-      esock_assert(false);
-      close_socket(fd);
-      continue;
-
       case ESOCKTYPE_TCP_CONNECT:
             if (sinfo->_state == ESOCKSTATE_CONNECTING) {
               sinfo->_state = ESOCKSTATE_ESTABLISHED;
@@ -333,6 +307,23 @@ void net_engine_t::epoll_del_sock(sockinfo_t *sinfo)
 }
 
 
+//int net_engine_t::close_socket(sockinfo_t *sinfo)
+//{
+//  sinfo->close();
+//  return 0;
+//}
+
+int close_socket(int fd)
+{
+  sockinfo_t *sinfo = sockpool.get_info(fd);
+  if (sinfo == nullptr) {
+    esock_set_error_msg("a invilded fd %d", fd);
+    return -1;
+  }
+  sinfo->close(fd);
+  return 0;
+}
+
 int net_engine_t::close_socket(int fd)
 {
   sockinfo_t *sinfo = sockpool.get_info(fd);
@@ -340,13 +331,36 @@ int net_engine_t::close_socket(int fd)
     esock_set_error_msg("a invilded fd %d", fd);
     return -1;
   }
-
-  if (sinfo->is_closed())
-    return 0;
-
+  esock_assert(sinfo->_eng == this);
   sinfo->close(fd);
-
   return 0;
+}
+
+
+int net_engine_t::add_tcp_listener(tcp_listener_t *listener,
+                     on_tcp_listener_acceptable_fn_t on_acceptable_fn,
+                     void *arg)
+{
+  const int listen_fd = listener->get_sock();
+  if (listen_fd == -1)
+  {
+    esock_set_syserr_msg("listener not open");
+    return -EINVAL;
+  }
+
+
+  sockinfo_t *sinfo = sockpool.get_info(listen_fd);
+  esock_assert(sinfo->_type == ESOCKTYPE_TCP_LISTENER);
+
+  if (sinfo->_eng != nullptr)
+  {
+    esock_set_error_msg("alreay add engine");
+    return -EINVAL;
+  }
+
+  esock_assert(not sinfo->_is_in_epoll);
+
+  return epoll_add_sock(listen_fd, EPOLLIN, (void*)on_acceptable_fn, (void*)listener, arg);
 }
 
 

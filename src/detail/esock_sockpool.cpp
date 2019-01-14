@@ -9,16 +9,17 @@
 #include <unistd.h>
 #include <cstdlib>
 #include "esock_sockpool.hpp"
-#include "esock_engine.hpp"
+#include "../esock_engine.hpp"
 
 namespace esock { 
 
 
-extern __thread int last_errno;
-__thread char error_msg[4096];
+//extern __thread int last_errno;
+//__thread char error_msg[4096];
 
 sockpool_t sockpool;
 
+int sockinfo_t::get_fd() const {return this - sockpool._socks;}
 
 int sockpool_t::init() {
   if (_ref != 0)
