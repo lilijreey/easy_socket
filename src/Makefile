@@ -1,5 +1,5 @@
 CXX = g++
-CXXFLAGS=-Wall -std=c++11 -g -ggdb
+CXXFLAGS=-Wall -std=c++11 -O0 -g -ggdb
 
 all: libesock.a
 

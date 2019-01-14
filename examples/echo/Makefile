@@ -1,4 +1,4 @@
-CXXFLAGS=-Wall -g -std=c++11 -isystem ../../src
+CXXFLAGS=-Wall -O0 -g -std=c++11 -isystem ../../src
 #LDFLAGS=-L../../src 
 LIBS=../../src/libesock.a 
 

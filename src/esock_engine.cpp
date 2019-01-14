@@ -57,7 +57,7 @@ net_engine_t::~net_engine_t()
   _is_stop = true;
   if (_efd != -1)
   {
-    close_socket(_efd);
+    ::close(_efd);
     _efd = -1;
     sockpool.uninit();
   }
@@ -233,7 +233,6 @@ int net_engine_t::process_event(std::chrono::milliseconds wait_event_ms)
     if (events & EPOLLIN) {
       switch (sinfo->_type) {
       case ESOCKTYPE_NONE:
-      case ESOCKTYPE_EPOLL:
         esock_assert(false);
         close_socket(fd);
         continue;
