@@ -28,13 +28,17 @@ public:
   ~EchoClient()
   {
       if (_sock != -1)
+      {
+          printf("destroy close sock\n");
           esock::close_socket(_sock);
+      }
   }
 
  public: //callback
    void on_conn_connecting(net_engine_t *eng, const char *ip, const uint16_t port, int sock)
    {
        assert(sock != -1);
+       printf("on connectiong fd:%d\n", sock);
        _sock = sock;
    }
 
@@ -54,7 +58,7 @@ public:
      printf("on conn %s:%d failed reconnct %s\n", ip, port, strerror(err));
      sleep(1);
      //reconnect
-     eng->async_tcp_client("127.0.0.1", 5566, this);
+     //eng->async_tcp_client("127.0.0.1", 5566, this);
    }
  
    void on_recv_complete(net_engine_t *eng, int sock, const char *data, const ssize_t datalen)
@@ -113,12 +117,16 @@ public:
 
 int main()
 {
-  EchoClient client;
+  EchoClient *client = new EchoClient;
 
   net_engine_t *eng = esock::make_net_engine();
-  eng->async_tcp_client("127.0.0.1", 5566, &client);
+  eng->async_tcp_client("127.0.0.1", 5566, client);
+  //printf("delete client\n");
+  //delete client;
 
   eng->process_event_loop(std::chrono::milliseconds(1000));
+
+  delete client;// and test timeout failed;
 
   esock::unmake_net_engine(eng);
 }

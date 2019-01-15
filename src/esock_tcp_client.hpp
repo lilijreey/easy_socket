@@ -65,7 +65,7 @@ struct async_tcp_connect_hanndler_t
                                            void *arg)
   {
       if (err == EINPROGRESS)
-          static_cast<subclass_t*>(arg)->on_conn_failed(eng, ip, port, sock);
+          static_cast<subclass_t*>(arg)->on_conn_connecting(eng, ip, port, sock);
       else
           static_cast<subclass_t*>(arg)->on_conn_failed(eng, ip, port, err);
   }
@@ -168,7 +168,10 @@ struct async_tcp_client_hanndler_t
                                            int sock,
                                            void *arg)
   {
-    static_cast<subclass_t*>(arg)->on_conn_failed(eng, ip, port, err);
+      if (err == EINPROGRESS)
+          static_cast<subclass_t*>(arg)->on_conn_connecting(eng, ip, port, sock);
+      else
+          static_cast<subclass_t*>(arg)->on_conn_failed(eng, ip, port, err);
   }
 
   static inline void on_conn_recvable_helper(net_engine_t *eng,

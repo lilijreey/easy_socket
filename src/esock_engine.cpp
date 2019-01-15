@@ -112,7 +112,7 @@ void net_engine_t::async_tcp_connect(const std::string &ip,
         goto error;
 
       //not real failed
-      on_conn_failed_fn(this, ip.c_str(), port, errno, sock, user_arg);
+      on_conn_failed_fn(this, ip.c_str(), port, EINPROGRESS, sock, user_arg);
       return ;
     }
 
