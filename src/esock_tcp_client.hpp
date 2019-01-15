@@ -201,6 +201,10 @@ struct async_tcp_client_hanndler_t
     __post_send(eng, sock, static_cast<subclass_t*>(this));
   }
 
+  void post_send(int sock)
+  {
+      __post_send(sockpool.get_info(sock)->_eng, sock, static_cast<subclass_t*>(this));
+  }
 
 };
 
