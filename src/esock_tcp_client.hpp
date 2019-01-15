@@ -20,6 +20,14 @@ namespace esock {
  * <code>
  * EchoClient : tcp_connect_hanndler_t<EchoClient> {
  *
+ * //连接中,一般用来记录socket,用于取消连接,如果直接链接成功或者其他错误则不会调用该函数
+ * void on_conn_connecting(net_engine_t *eng, const char *p, const uint16_t port, int sock)
+ * { 
+ *   //cancle connect
+ *   eng->close_socket(sock);
+ * }
+ *
+ *
  *  void on_conn_complete(net_engine_t *eng, const char *ip, const uint16_t port, int sock) {
  *    send(sock, "hello", 6);
  *    //... code
@@ -35,6 +43,7 @@ template <class subclass_t>
 struct async_tcp_connect_hanndler_t
 {
   //subclass_t need implete these two func
+  //void on_conn_connecting(net_engine_t *eng, const char *p, const uint16_t port, int sock);
   //void on_conn_complete(net_engine_t *eng, const char *ip, const uint16_t port, int sock);
   //void on_conn_failed(net_engine_t *eng, const char *ip, const uint16_t port, const int err);
 
@@ -52,9 +61,13 @@ struct async_tcp_connect_hanndler_t
                                            const char *ip, 
                                            const uint16_t port, 
                                            const int err,
+                                           int sock,
                                            void *arg)
   {
-    static_cast<subclass_t*>(arg)->on_conn_failed(eng, ip, port, err);
+      if (err == EINPROGRESS)
+          static_cast<subclass_t*>(arg)->on_conn_failed(eng, ip, port, sock);
+      else
+          static_cast<subclass_t*>(arg)->on_conn_failed(eng, ip, port, err);
   }
 
 };
@@ -66,6 +79,8 @@ struct async_tcp_connect_hanndler_t
  * <code>
  * EchoClient: tcp_client_hanndler_t<EchoClient> {
  *  //实现下面几个回调函数
+ *  
+ *  void on_conn_connecting(net_engine_t *eng, const char *p, const uint16_t port, int sock)
  *
  *   如果在该回调中调用close_socket，则不会进行下面的调用
  *  void on_conn_complete(net_engine_t *eng, const char *ip, const uint16_t port, int sock);
@@ -99,6 +114,8 @@ template <class subclass_t>
 struct async_tcp_client_hanndler_t
 {
   /*  请实现下面这些函数
+   void on_conn_connecting(net_engine_t *eng, const char *p, const uint16_t port, int sock)
+
    void on_conn_complete(net_engine_t *eng, const char *ip, const uint16_t port, int sock)
  
    void on_conn_failed(net_engine_t *eng, const char *ip, const uint16_t port, const int err)
@@ -148,6 +165,7 @@ struct async_tcp_client_hanndler_t
                                            const char *ip, 
                                            const uint16_t port, 
                                            const int err,
+                                           int sock,
                                            void *arg)
   {
     static_cast<subclass_t*>(arg)->on_conn_failed(eng, ip, port, err);

@@ -12,3 +12,6 @@ echo_server: echo_server.o
 
 clean:
 	rm -rf *.o echo_client echo_server
+
+memcheck: echo_server 
+	valgrind --tool=memcheck  --track-origins=yes --log-file=x.log --leak-check=full --error-limit=no  --show-leak-kinds=all ./echo_server 

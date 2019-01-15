@@ -30,7 +30,7 @@ struct sockinfo_t;
  */
 //tcp_client cb
 using on_tcp_conn_complete_fn_t = void(*)(net_engine_t *eng, const char *ip, const uint16_t port, int sock, void *arg);
-using on_tcp_conn_failed_fn_t   = void(*)(net_engine_t *eng, const char *ip, const uint16_t port, const int err, void *arg);
+using on_tcp_conn_failed_fn_t   = void(*)(net_engine_t *eng, const char *ip, const uint16_t port, const int err, int sock, void *arg);
 
 //tcp_server cb
 using on_tcp_listener_acceptable_fn_t = void(*)(net_engine_t *eng, tcp_listener_t *ins, int listen_fd, void *arg);
@@ -65,6 +65,7 @@ class net_engine_t : detail::noncopyable_t
  public: //tcp connect
   //发起异步链接请求
   //面向OO T 类型必须继承tcp_connect_hanndler_t
+  //BUG TODO 链接过程中对象销毁
   template <class async_tcp_connect_hanndler_subclass>
   void async_tcp_connect(const std::string &ip, 
                          const uint16_t port, 

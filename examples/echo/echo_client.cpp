@@ -22,9 +22,22 @@ class EchoClient
   int sendPos=0;
   int sendDataLen=0;
   int recvPos=0;
+  int _sock=-1;
 
+public:
+  ~EchoClient()
+  {
+      if (_sock != -1)
+          esock::close_socket(_sock);
+  }
 
  public: //callback
+   void on_conn_connecting(net_engine_t *eng, const char *ip, const uint16_t port, int sock)
+   {
+       assert(sock != -1);
+       _sock = sock;
+   }
+
    void on_conn_complete(net_engine_t *eng, const char *ip, const uint16_t port, int sock)
    {
      printf("on conn %s:%d ok sock:%d\n", ip, port, sock);
