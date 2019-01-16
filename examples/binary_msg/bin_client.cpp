@@ -1,17 +1,24 @@
 /**
  * @file     echo_client.cpp
- *
- * @author   lili  <lilijreey@gmail.com>
- * @date     01/13/2019 11:49:29 PM
- *
+ * 
  */
 
 
+
+
+#include <vector>
 #include <esock.hpp>
+#include "package_buffer.hpp"
+
+#include "protocol.hpp"
+
+
 using esock::net_engine_t;
 
-class EchoClient 
-  : public esock::async_tcp_client_hanndler_t<EchoClient>
+
+//class BinClient : public esock::tcp_client_t<BinClient, proto_head_t, 4<<10>
+class BinClient : public esock::async_tcp_client_hanndler_t<BinClient>
+                  ,public esock::tcp_client_t<BinClient, proto_head_t, 4 <<10>
 {
  private:
   std::string svrIp;
@@ -23,9 +30,11 @@ class EchoClient
   int sendDataLen=0;
   int recvPos=0;
   int _sock=-1;
+  int _addCount;
+  std::vector<uint64_t> _results;
 
 public:
-  ~EchoClient()
+  ~BinClient()
   {
       if (_sock != -1)
       {
@@ -44,13 +53,6 @@ public:
 
    void on_conn_complete(net_engine_t *eng, const char *ip, const uint16_t port, int sock)
    {
-     printf("on conn %s:%d ok sock:%d\n", ip, port, sock);
-     sendPos = 0;
-     //send hello word\n
-     const char *msg = "hello world\n";
-     sendDataLen = strlen(msg);
-     memcpy(sendBuf, msg, sendDataLen);
-     post_send(eng, sock);
    }
  
    void on_conn_failed(net_engine_t *eng, const char *ip, const uint16_t port, const int err)
@@ -60,29 +62,17 @@ public:
      //reconnect
      //eng->async_tcp_client("127.0.0.1", 5566, this);
    }
- 
-   void on_recv_complete(net_engine_t *eng, int sock, const char *data, const ssize_t datalen)
+
+   void on_recv_pkg_invalid(net_engine_t *eng, int sock, proto_head_t *head)
    {
-     //解包
-     //最大message len 63
-     //以\n结尾为一个message
-     recvPos += datalen;
-     if (recvPos == MAX_BUF || data[datalen-1] == '\n')
-     {
-       ((char*)data)[recvPos]='\0';
-       printf("recv msg:%s len:%d\n", recvBuf, recvPos);
-       recvPos = 0;
-     }
+     printf("get an invalid pkg head, close sock:%d\n", sock);
+     eng->close_socket(sock);
    }
- 
-   void on_send_complete(net_engine_t *eng, int sock, const char *data, const ssize_t sendlen)
+
+   void on_recv_pkg_complete(net_engine_t *eng, int sock, const proto_head_t *msg, const size_t bodylen)
    {
-       sendPos += sendlen;
-       if (sendPos < sendDataLen)
-       {
-           printf("continue send :%d", sendPos);
-       }
-       assert(sendPos <= sendDataLen);
+       //TODO handle msg
+
    }
  
    void on_peer_close(net_engine_t *eng, int sock)
@@ -100,24 +90,49 @@ public:
      eng->close_socket(sock);
    }
 
-   //返回需要发送的数据
-   std::pair<char*, ssize_t> get_send_data()
-   {
-     return {sendBuf + sendPos, sendDataLen - sendPos};
-   }
- 
-   //需要处理buff满的情况
-   std::pair<char*, ssize_t> get_recv_buff() 
-   {
-     return {recvBuf+ recvPos, MAX_BUF-recvPos};
-   }
+       //build number and send to server
+#if 0
+       _addCount = random() % 512;
+       _resultes.reverse(_addCount);
+
+       _sendbuf.empty();
+
+       //size_t pos = _sendbuf.append(_addCount);
+       //_sendbuf.visit_pos(pos);
+       
+       //build proto_add_request_t msg
+       _sendbuf.get_writable_size();
+
+       if (not _sendbuf.is_can_write(sizeof(proto_add_request_t) + sizeof(proto_add_request_t::pair) * _addCount))
+       {
+           //fix len
+       }
+
+       
+       req->pair_couont = _addCount;
+       for (int i=0; i < _addCount; ++i) {
+           req->[i].num1 = random();
+           req->[i].num2 = random();
+
+           _results.push_back((int64_t)(req->[i].num1) + req->[i].num2);
+       }                                
+
+       _sendbuf.package();
+       //攒够1K在发送
+       if (_sendbuf.sendable_len() > _1K)
+       {
+           post_send(eng, sock);
+           //post_send(sock);
+       }
+#endif
+
  
 };
 
 
 int main()
 {
-  EchoClient *client = new EchoClient;
+  BinClient *client = new BinClient;
 
   net_engine_t *eng = esock::make_net_engine();
   eng->async_tcp_client("127.0.0.1", 5566, client);

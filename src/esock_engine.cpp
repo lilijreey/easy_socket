@@ -111,7 +111,9 @@ void net_engine_t::async_tcp_connect(const std::string &ip,
                                user_arg))
         goto error;
 
-      return;
+      //not real failed
+      on_conn_failed_fn(this, ip.c_str(), port, EINPROGRESS, sock, user_arg);
+      return ;
     }
 
     esock_set_syserr_msg("connect failed fd:%d", sock);
@@ -123,7 +125,7 @@ void net_engine_t::async_tcp_connect(const std::string &ip,
 
 error:
   if (sock != -1) close_socket(sock);
-  on_conn_failed_fn(this, ip.c_str(), port, errno, user_arg);
+  on_conn_failed_fn(this, ip.c_str(), port, errno, -1, user_arg);
 
 }
 
@@ -207,8 +209,7 @@ int net_engine_t::process_event(std::chrono::milliseconds wait_event_ms)
     esock_debug_log("fd %d has ev\n", fd);
 
     if (sinfo->is_closed()) {
-      assert(false);
-      //esock_debug_log("process sock %d event but is closed, skip", fd);
+      esock_debug_log("process sock %d event but is closed, skip", fd);
       continue;
     }
 
@@ -249,7 +250,7 @@ int net_engine_t::process_event(std::chrono::milliseconds wait_event_ms)
           sinfo->_state = ESOCKSTATE_ERROR_OCCUES;
           int error = get_sock_error(fd);
           //TODO IP
-          ((on_tcp_conn_failed_fn_t)sinfo->_on_recvable_fn)(this, nullptr, 0, error, sinfo->_arg);
+          ((on_tcp_conn_failed_fn_t)sinfo->_on_recvable_fn)(this, nullptr, 0, error, -1, sinfo->_arg);
           close_socket(fd);
           continue;
         }
