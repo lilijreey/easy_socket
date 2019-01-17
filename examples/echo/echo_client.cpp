@@ -61,7 +61,7 @@ public:
      //eng->async_tcp_client("127.0.0.1", 5566, this);
    }
  
-   void on_recv_complete(net_engine_t *eng, int sock, const char *data, const ssize_t datalen)
+   void on_recv_complete(net_engine_t *eng, int sock, const char *data, const size_t datalen)
    {
      //解包
      //最大message len 63

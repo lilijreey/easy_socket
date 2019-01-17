@@ -25,10 +25,10 @@ namespace esock {
  *  //实现下面几个回调函数
  *
  *  如果在该回调中调用close_socket，则不会进行下面的调用
- *  void on_recv_complete(net_engine_t *eng, int sock, const char *data, const ssize_t datalen);
+ *  void on_recv_complete(net_engine_t *eng, int sock, const char *data, const size_t datalen);
  *
  *   发送完成数据是通知,一般用来更新buff
- *  void on_send_complete(net_engine_t *eng, int sock, const char *data, const ssize_t sendlen);
+ *  void on_send_complete(net_engine_t *eng, int sock, const char *data, const size_t sendlen);
  *
  *  void on_peer_close(net_engine_t *eng, int sock);
  *
@@ -75,7 +75,12 @@ struct tcp_server_conn_handler_t
   //发送数据
   void post_send(net_engine_t *eng, int sock)
   {
-    __post_send(eng, sock, static_cast<subclass_t*>(this));
+      __post_send(eng, sock, static_cast<subclass_t*>(this));
+  }
+
+  void post_send(int sock)
+  {
+      __post_send(sockpool.get_info(sock)->_eng, sock, static_cast<subclass_t*>(this));
   }
 
 };

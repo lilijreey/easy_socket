@@ -64,7 +64,6 @@ void sockinfo_t::close(int sock) {
   if (_is_in_epoll) {
     _eng->epoll_del_sock(this);
     _eng = 0;
-    _is_in_epoll = 0;
   }
 
 

@@ -9,7 +9,7 @@ top
 
 
 ## 特性
-
+* delete this safe
 
 ## 限制
 只适用于X86-64体系下的Linux系统

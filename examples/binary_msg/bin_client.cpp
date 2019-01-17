@@ -8,7 +8,7 @@
 
 #include <vector>
 #include <esock.hpp>
-#include "package_buffer.hpp"
+#include <buffer/esock_netbuff.hpp>
 
 #include "protocol.hpp"
 
@@ -16,22 +16,13 @@
 using esock::net_engine_t;
 
 
-//class BinClient : public esock::tcp_client_t<BinClient, proto_head_t, 4<<10>
-class BinClient : public esock::async_tcp_client_hanndler_t<BinClient>
-                  ,public esock::tcp_client_t<BinClient, proto_head_t, 4 <<10>
+class BinClient 
+  : public esock::tcp_client_t<BinClient, proto_head_t, 4 <<10>
 {
  private:
-  std::string svrIp;
-  uint16_t svrPort;
-  enum {MAX_BUF=64};
-  char sendBuf[MAX_BUF];
-  char recvBuf[MAX_BUF];
-  int sendPos=0;
-  int sendDataLen=0;
-  int recvPos=0;
   int _sock=-1;
-  int _addCount;
-  std::vector<uint64_t> _results;
+  int _count;
+  std::vector<int64_t> _results;
 
 public:
   ~BinClient()
@@ -53,6 +44,7 @@ public:
 
    void on_conn_complete(net_engine_t *eng, const char *ip, const uint16_t port, int sock)
    {
+       send_add_req(eng);
    }
  
    void on_conn_failed(net_engine_t *eng, const char *ip, const uint16_t port, const int err)
@@ -60,19 +52,93 @@ public:
      printf("on conn %s:%d failed reconnct %s\n", ip, port, strerror(err));
      sleep(1);
      //reconnect
-     //eng->async_tcp_client("127.0.0.1", 5566, this);
+     eng->async_tcp_client("127.0.0.1", 5566, this);
    }
 
-   void on_recv_pkg_invalid(net_engine_t *eng, int sock, proto_head_t *head)
+   void on_recv_pkg_invalid(net_engine_t *eng, int sock, const proto_head_t *head)
    {
-     printf("get an invalid pkg head, close sock:%d\n", sock);
+     printf("get an invalid pkg head, stop event loop close sock:%d\n", sock);
      eng->close_socket(sock);
+     _sock = -1;
+     eng->stop_event_loop();
    }
 
-   void on_recv_pkg_complete(net_engine_t *eng, int sock, const proto_head_t *msg, const size_t bodylen)
+   //业务逻辑
+   void send_add_req(net_engine_t *eng)
    {
-       //TODO handle msg
+       //build number and send to server
+       _count = random() % 500;
+       _results.reserve(_count);
 
+       assert(_sendbuf.is_empty_pkg_body());
+
+       size_t body_len = (_count * sizeof(uint32_t) * 2 + sizeof(uint32_t));// pair_count
+
+       if (body_len > _sendbuf.get_writable_len())
+       {
+           auto count = _sendbuf.get_writable_len() / (sizeof(uint32_t) * 2);
+           assert(count >=2);
+           --count;
+           printf("sendbuff no space, change count:%d:%ld\n", _count, count);
+           _count = count;
+           body_len = (_count * sizeof(uint32_t) * 2 + sizeof(uint32_t));// pair_count
+       }
+
+       _results.clear();
+       //push packge
+       proto_add_request_t *req = _sendbuf.get_pkg_head<proto_add_request_t>();
+       req->head.magic = PROTO_MAGIC;
+       req->head.cmd = PROTO_ADD_CMD_REQ;
+       req->head.pkglen = sizeof(proto_head_t) + body_len;
+       req->pair_count = _count;
+       for (int i=0; i < _count; ++i) {
+           req->pair[i].num1 = random();
+           req->pair[i].num2 = random();
+
+           _results.push_back((int64_t)(req->pair[i].num1) + req->pair[i].num2);
+       }                                
+       _sendbuf.increase_write_len(body_len);
+
+       _sendbuf.make_next_pkg();
+       post_send(eng, _sock);
+       printf("send count:%d\n", _count);
+   }
+
+   void handle_add_rsp(net_engine_t *eng, const proto_add_response_t *rsp, const size_t bodylen)
+   {
+       //接受结果，然后和本地结果比对，并发送新的请求
+       if (rsp->count != _results.size())
+       {
+           printf("recv rsp count:%u, but not same local:%lu\n", rsp->count, _results.size());
+           eng->close_socket(_sock);
+           _sock = -1;
+           eng->stop_event_loop();
+           return;
+       }
+
+       for (size_t i=0; i < rsp->count; ++i) {
+           assert(rsp->resluts[i] == _results[i]);
+       }
+       printf("recv result cnt :%u check ok\n", rsp->count);
+
+
+       send_add_req(eng);
+   }
+
+
+   void on_recv_pkg_complete(net_engine_t *eng, int sock, const proto_head_t *head, const size_t bodylen)
+   {
+       switch (head->cmd) {
+       case PROTO_ADD_CMD_RSP:
+           handle_add_rsp(eng, (proto_add_response_t*)head, bodylen);
+           delete this;
+           //eng->delete_this(this);
+           //eng->stop_event_loop();
+           return;
+       default:
+           printf("bad cmd:%d\n", head->cmd);
+           return;
+       }
    }
  
    void on_peer_close(net_engine_t *eng, int sock)
@@ -80,7 +146,7 @@ public:
      printf("sock:%d peer closed, close local, reconnect\n", sock);
      eng->close_socket(sock);
      sleep(1);
-     eng->async_tcp_client("127.0.0.1", 5566, this);
+     //eng->async_tcp_client("127.0.0.1", 5566, this);
      //reconnect
    }
  
@@ -88,43 +154,10 @@ public:
    {
      printf("sock:%d error, %s ", sock, strerror(error));
      eng->close_socket(sock);
+     _sock = -1;
+     eng->stop_event_loop();
    }
 
-       //build number and send to server
-#if 0
-       _addCount = random() % 512;
-       _resultes.reverse(_addCount);
-
-       _sendbuf.empty();
-
-       //size_t pos = _sendbuf.append(_addCount);
-       //_sendbuf.visit_pos(pos);
-       
-       //build proto_add_request_t msg
-       _sendbuf.get_writable_size();
-
-       if (not _sendbuf.is_can_write(sizeof(proto_add_request_t) + sizeof(proto_add_request_t::pair) * _addCount))
-       {
-           //fix len
-       }
-
-       
-       req->pair_couont = _addCount;
-       for (int i=0; i < _addCount; ++i) {
-           req->[i].num1 = random();
-           req->[i].num2 = random();
-
-           _results.push_back((int64_t)(req->[i].num1) + req->[i].num2);
-       }                                
-
-       _sendbuf.package();
-       //攒够1K在发送
-       if (_sendbuf.sendable_len() > _1K)
-       {
-           post_send(eng, sock);
-           //post_send(sock);
-       }
-#endif
 
  
 };
@@ -141,7 +174,7 @@ int main()
 
   eng->process_event_loop(std::chrono::milliseconds(1000));
 
-  delete client;// and test timeout failed;
+  //delete client;// and test timeout failed;
 
   esock::unmake_net_engine(eng);
 }

@@ -15,6 +15,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include "detail/esock_sockpool.hpp"
+#include "detail/esock_sockpool.hpp"
 
 namespace esock {
 
@@ -27,14 +28,12 @@ static inline void __on_conn_recvable_helper(net_engine_t *eng,
                                            T* self)
 {
   esock_debug_log("on_conn_recvable\n");
-  //subclass_t *self = static_cast<subclass_t*>(arg);
 
-  while (true) {
-    //get_bufer_info;
+  while (not eng->is_skip_current_event_process()) {
     std::pair<char*, ssize_t> buf_info = self->get_recv_buff();
     char *buf = buf_info.first;
-    ssize_t buflen = buf_info.second;
-    ssize_t recvlen= 0;
+    size_t buflen = buf_info.second;
+    size_t recvlen= 0;
 
     if (buflen == 0) {
       esock_debug_log("recv buffer is full");
@@ -68,7 +67,8 @@ static inline void __on_conn_recvable_helper(net_engine_t *eng,
       if (recvlen)
         self->on_recv_complete(eng, sock, buf, recvlen);
 
-      self->on_peer_close(eng, sock);
+      if (not eng->is_skip_current_event_process()) 
+          self->on_peer_close(eng, sock);
       return;
     }
 

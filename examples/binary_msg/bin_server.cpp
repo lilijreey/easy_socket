@@ -2,20 +2,27 @@
 #include <unordered_set>
 #include <memory>
 #include <esock.hpp>
+#include <buffer/esock_netbuff.hpp>
+#include "protocol.hpp"
 
+int times = 10;
 using esock::net_engine_t;
 using esock::tcp_listener_t;
 
-class EchoServer;
+class BinServer;
 
 //接受\n结尾字符，然后发送回去
-class EchoServerConn
-  : public esock::tcp_server_conn_handler_t<EchoServerConn>
+class BinServerConn
+  : public esock::tcp_server_conn_t<BinServerConn, proto_head_t, 4<<10>
 {
+ 
+ private:
+    int _sock=-1;
+    BinServer *_svr;
  public:
-    EchoServerConn(int sock, EchoServer *svr) 
+    BinServerConn(int sock, BinServer *svr) 
         :_sock(sock),_svr(svr) {}
-    ~EchoServerConn()
+    ~BinServerConn()
     {
         if (_sock) {
             esock::close_socket(_sock);
@@ -24,46 +31,72 @@ class EchoServerConn
     }
  public:
     //callback
-   void on_recv_complete(net_engine_t *eng, int sock, const char *data, const ssize_t datalen);
+
+    void handle_add_req(net_engine_t *eng, const proto_add_request_t* req, const size_t reqBodylen)
+    {
+        //计算num1 + num2 写入sendbuff 发送
+        assert(req->pair_count < 500);
+        assert(_sendbuf.is_empty_pkg_body());
+
+        //push response
+        const size_t bodylen = req->pair_count * sizeof(int64_t) + sizeof(uint32_t);//count
+        if (not _sendbuf.ensure_writable_len(bodylen))
+        {
+            printf("buff is full, drop data\n");
+            return;
+        }
+
+        if (_sendbuf.get_writable_len() < bodylen)
+        {
+            _sendbuf.discard_sended_data();
+            if (_sendbuf.get_writable_len() < bodylen)
+            {
+            }
+        }
+        auto *rsp = _sendbuf.get_pkg_head<proto_add_response_t>();
+        rsp->head.magic = PROTO_MAGIC;
+        rsp->head.cmd   = PROTO_ADD_CMD_RSP;
+        rsp->head.pkglen= sizeof(proto_head_t) + bodylen;;
+        rsp->count      = req->pair_count;
+
+        for (size_t i=0; i< req->pair_count; ++i) {
+            rsp->resluts[i] = (int64_t)(req->pair[i].num1) + req->pair[i].num2;
+        }
+       _sendbuf.increase_write_len(bodylen);
+
+       _sendbuf.make_next_pkg();
+       post_send(eng, _sock);
+       printf("send count:%d\n",rsp->count);
+       //eng->skip_current_event_process();
+       //delete(this);
+       if (--times == 0)
+           eng->stop_event_loop();
+
+    }
+
+    void on_recv_pkg_complete(net_engine_t *eng, int sock, const proto_head_t *head, const size_t bodylen)
+    {
+       switch (head->cmd) {
+       case PROTO_ADD_CMD_REQ:
+           handle_add_req(eng, (proto_add_request_t*)head, bodylen);
+           return;
+       default:
+           printf("bad cmd:%d\n", head->cmd);
+           return;
+       }
+    }
  
-   //发送完成数据是通知,一般用来更新buff
-   void on_send_complete(net_engine_t *eng, int sock, const char *data, const ssize_t sendlen)
-   {
-       sendPos += sendlen;
-       if (sendPos == recvPos)
-           sendPos = recvPos = 0;
-   }
- 
+   void on_recv_pkg_invalid(net_engine_t *eng, int sock, const proto_head_t *head);
    void on_peer_close(net_engine_t *eng, int sock);
    void on_error_occur(net_engine_t *eng, int sock, int error);
- 
-   //需要处理buff满的情况
-   std::pair<char*, ssize_t> get_recv_buff() 
-   {
-       printf("get recv buf\n");
-       return {buf+recvPos, MAX_BUF-recvPos};
-   }
- 
-   //返回需要发送的数据
-   std::pair<char*, ssize_t> get_send_data() 
-   {
-       return {buf+sendPos, recvPos-sendPos};
-   }
- private:
-    enum {MAX_BUF=64};
-    int _sock=-1;
-    EchoServer *_svr;
-    char buf[MAX_BUF];
-    int recvPos=0;
-    int sendPos=0;
 };
 
-class EchoServer 
-  : public esock::tcp_server_handler_t<EchoServer, EchoServerConn>
+class BinServer 
+  : public esock::tcp_server_handler_t<BinServer, BinServerConn>
 {
  private:
     esock::tcp_listener_t *_listener=nullptr;
-    std::unordered_set<EchoServerConn*> _conns;
+    std::unordered_set<BinServerConn*> _conns;
 
  public:
   bool init(const std::string &ip, uint16_t port)
@@ -72,7 +105,7 @@ class EchoServer
       return _listener != nullptr;
   }
 
-  ~EchoServer() {
+  ~BinServer() {
       esock::unmake_tcp_listener(_listener);
       for (auto conn : _conns)
       {
@@ -86,7 +119,7 @@ class EchoServer
 
   void listen() {_listener->start_listen();}
 
-  void closeConn(EchoServerConn *conn)
+  void closeConn(BinServerConn *conn)
   {
       _conns.erase(conn);
       delete conn;
@@ -94,11 +127,11 @@ class EchoServer
 
  public:
   //callback
-  EchoServerConn*
+  BinServerConn*
   on_accept_complete(net_engine_t *eng, tcp_listener_t *ins, int sock, sockaddr_storage addr)
   {
       printf("accept new conn fd %d\n", sock);
-      EchoServerConn *conn = new EchoServerConn(sock, this);
+      BinServerConn *conn = new BinServerConn(sock, this);
       _conns.insert(conn);
       return conn;
   }
@@ -111,37 +144,22 @@ class EchoServer
 };
 
 
-void EchoServerConn::on_recv_complete(net_engine_t *eng, int sock, const char *data, const ssize_t datalen)
-{
-    assert(datalen>0);
-    recvPos += datalen;
-    if (data[datalen-1] == '\n')
-    {
-        if (strncmp(data, "close server\n", strlen("close server\n")) == 0)
-            eng->stop_event_loop();
-
-        assert(sendPos == 0);
-        //TODO disabel recv
-        post_send(eng, sock);
-    } 
-    else if (recvPos == MAX_BUF)
-    {//msg too long
-        printf("sock %d msg too long, close socket", sock);
-        _svr->closeConn(this);
-        return;
-    }
-}
-
  
-void EchoServerConn::on_peer_close(net_engine_t *eng, int sock)
+void BinServerConn::on_peer_close(net_engine_t *eng, int sock)
 {
     printf("conn fd:%d peer closed\n", sock);
     _svr->closeConn(this);
 }
 
-void EchoServerConn::on_error_occur(net_engine_t *eng, int sock, int error)
+void BinServerConn::on_error_occur(net_engine_t *eng, int sock, int error)
 {
     printf("conn fd:%d error:%s\n", sock, strerror(error));
+    _svr->closeConn(this);
+}
+
+void BinServerConn::on_recv_pkg_invalid(net_engine_t *eng, int sock, const proto_head_t *head)
+{
+    printf("get an invalid pkg head, stop event loop close sock:%d\n", sock);
     _svr->closeConn(this);
 }
 
@@ -149,7 +167,7 @@ int main()
 {
   std::unique_ptr<net_engine_t> eng(esock::make_net_engine());
 
-  EchoServer svr;
+  BinServer svr;
   if (not svr.init("127.0.0.1", 5566))
   {
       exit(-1);

@@ -87,10 +87,10 @@ struct async_tcp_connect_hanndler_t
  *
  *  void on_conn_failed(net_engine_t *eng, const char *ip, const uint16_t port, const int err);
  *
- *  void on_recv_complete(net_engine_t *eng, int sock, const char *data, const ssize_t datalen);
+ *  void on_recv_complete(net_engine_t *eng, int sock, const char *data, const size_t datalen);
  *
  *   发送完成数据是通知,一般用来更新buff
- *  void on_send_complete(net_engine_t *eng, int sock, const char *data, const ssize_t sendlen);
+ *  void on_send_complete(net_engine_t *eng, int sock, const char *data, const size_t sendlen);
  *
  *  void on_peer_close(net_engine_t *eng, int sock);
  *
@@ -120,9 +120,9 @@ struct async_tcp_client_hanndler_t
  
    void on_conn_failed(net_engine_t *eng, const char *ip, const uint16_t port, const int err)
  
-   void on_recv_complete(net_engine_t *eng, int sock, const char *data, const ssize_t datalen)
+   void on_recv_complete(net_engine_t *eng, int sock, const char *data, const size_t datalen)
  
-   void on_send_complete(net_engine_t *eng, int sock, const char *data, const ssize_t sendlen)
+   void on_send_complete(net_engine_t *eng, int sock, const char *data, const size_t sendlen)
  
    void on_peer_close(net_engine_t *eng, int sock)
  

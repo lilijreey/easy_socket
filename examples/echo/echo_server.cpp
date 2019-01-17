@@ -24,10 +24,10 @@ class EchoServerConn
     }
  public:
     //callback
-   void on_recv_complete(net_engine_t *eng, int sock, const char *data, const ssize_t datalen);
+   void on_recv_complete(net_engine_t *eng, int sock, const char *data, const size_t datalen);
  
    //发送完成数据是通知,一般用来更新buff
-   void on_send_complete(net_engine_t *eng, int sock, const char *data, const ssize_t sendlen)
+   void on_send_complete(net_engine_t *eng, int sock, const char *data, const size_t sendlen)
    {
        sendPos += sendlen;
        if (sendPos == recvPos)
@@ -111,7 +111,7 @@ class EchoServer
 };
 
 
-void EchoServerConn::on_recv_complete(net_engine_t *eng, int sock, const char *data, const ssize_t datalen)
+void EchoServerConn::on_recv_complete(net_engine_t *eng, int sock, const char *data, const size_t datalen)
 {
     assert(datalen>0);
     recvPos += datalen;

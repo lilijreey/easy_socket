@@ -12,93 +12,10 @@
 namespace esock {
 class net_engine_t;
 
+//buf的长度应该是最大应用层包长的两倍
 template <typename pkg_head_t, size_t BUFSIZE, size_t PKG_HEAD_LEN=sizeof(pkg_head_t)>
 struct net_recvbuf_t// like netty channel
 {
-    enum {COOKIE=0xcccccccc};
-
-    size_t get_capacity() const {return BUFSIZE;}
-
-    uint32_t get_readable_len() const 
-    { 
-        assert(_wpos >= _rpos);
-        return _wpos - _rpos; 
-    }
-
-    uint32_t get_writable_len() const
-    {
-        assert(BUFSIZE >= _wpos);
-        return BUFSIZE - _wpos;
-    }
-
-    char* get_writable_buff()
-    {
-        return _buf + _wpos;
-    }
-
-    //不检验参数，请保证参数有效
-    //消费数据
-    const pkg_head_t* read_package(size_t len) 
-    { 
-        void *data = _buf + _rpos;
-        assert(get_readable_len() >= len);
-        _rpos += len;
-        assert(_rpos <= get_capacity());
-        if (_rpos == _wpos) _rpos = _wpos;
-        return data;
-    }
-
-
-    const pkg_head_t* peek_package() const 
-    {
-        return _buf + _rpos;
-    }
-
-    //返回清理的空间大小
-    uint32_t discard_readed_data()
-    {
-
-       //TODO 策略
-        const uint32_t readedLen = _rpos;
-        const uint32_t unreadLen = get_readable_len();
-        if (unreadLen != 0)
-        {
-          memmove(_buf, _buf+_rpos, unreadLen);
-        }
-        _rpos = 0;
-        _wpos = unreadLen;
-        return readedLen;
-    }
-
-
-    inline void reset()
-    {
-        _rpos=0;
-        _wpos = 0;
-    }
-
-    bool is_wrire_out_bound() const
-    {
-        return _cookie1 == COOKIE or _cookie2 == COOKIE;
-    }
-
-
-    ////如果头不足返回nullptr
-    const pkg_head_t* peek_package_head() const
-    {
-        if (this->get_readable_len() < PKG_HEAD_LEN)
-        {
-            return nullptr;
-        }
-        return peek_package();
-    }
-
-
-    bool is_has_complete_pkg(const size_t pkgLen) const
-    {
-        return get_readable_len() >= pkgLen;
-    }
-
     //
     //   +----------+---------------+--------------+
     //   |readedData| readableData  | writableLen |
@@ -112,6 +29,91 @@ struct net_recvbuf_t// like netty channel
     uint32_t _rpos        =0;  //未读数据位置 _rpos <= _wpos
     char     _buf[BUFSIZE];
     uint32_t _cookie2     = COOKIE; //write protectd
+
+ public:
+    enum {COOKIE=0xcccccccc};
+
+    size_t get_capacity() const {return BUFSIZE;}
+
+    uint32_t get_readable_len() const 
+    { 
+        assert(_wpos >= _rpos);
+        return _wpos - _rpos; 
+    }
+
+
+    char* get_writable_buff()
+    {
+        return _buf + _wpos;
+    }
+
+    uint32_t get_writable_len() const
+    {
+        assert(BUFSIZE >= _wpos);
+        return BUFSIZE - _wpos;
+    }
+
+    //消费数据,不检验参数，请保证参数有效
+    //@return 被消费的包头,用于上层读取报信息
+    const pkg_head_t* read_package(size_t len) 
+    { 
+        void *data = _buf + _rpos;
+        assert(get_readable_len() >= len);
+        _rpos += len;
+        assert(_rpos <= get_capacity());
+        if (_rpos == _wpos) 
+            _rpos = _wpos = 0;
+        return (pkg_head_t*)data;
+    }
+
+
+    //如果头不足返回nullptr
+    const pkg_head_t* peek_package_head() const
+    {
+        if (this->get_readable_len() < PKG_HEAD_LEN)
+        {
+            return nullptr;
+        }
+        return (pkg_head_t*)_buf + _rpos;
+    }
+
+
+    //清除已读取的数据，返回清理的空间大小
+    uint32_t discard_readed_data()
+    {
+       //TODO 策略
+        const uint32_t readedLen = _rpos;
+        const uint32_t unreadLen = get_readable_len();
+        if (unreadLen != 0)
+        {
+          memmove(_buf, _buf+_rpos, unreadLen);
+        }
+        _rpos = 0;
+        _wpos = unreadLen;
+        return readedLen;
+    }
+
+
+    //重置buffer状态为空
+    inline void reset()
+    {
+        _rpos=0;
+        _wpos = 0;
+    }
+
+    //检测buffer是否已经被破坏
+    bool is_wrire_out_bound() const
+    {
+        return _cookie1 != COOKIE or _cookie2 != COOKIE;
+    }
+
+
+    //是否存在一个完成的包数据,传入包的长度
+    bool is_complete_pkg(const size_t pkglen) const
+    {
+        return get_readable_len() >= pkglen;
+    }
+
 };
 
 
@@ -122,7 +124,7 @@ struct net_sendbuf_t
   //
   //                                _hpos
   //                                 /  
-  //                  | sendableLen  | pkgLen| 
+  //                  | sendableLen  | pkglen| 
   //   +---+----------+--------------+-------+--------------+
   //   |   |sendedData| readableData         | writableLen |
   //   +---+----------+--------------+-------+--------------+
@@ -132,7 +134,7 @@ struct net_sendbuf_t
   // _rpos 已发送数据的下一个
   // _hpos  指向正在写入的数据的包头，_hpos指向的数据不会被发送 
   // 如果打包后空间无容纳新的包头，则_hpos= _wpos,这时不可写，也没有包
-  // 可用IsHasP
+  // 可用is_has_pack
   // _wpos 指向下一个将写入的地址
   //   
 
@@ -144,7 +146,8 @@ struct net_sendbuf_t
   char     _buf[BUFSIZE];
   uint32_t _cookie2 = COOKIE;
 
-  inline void reset()
+  //重置buffer为空
+  void reset()
   {
       _rpos=0;
       _hpos=0;
@@ -156,11 +159,12 @@ struct net_sendbuf_t
       return BUFSIZE;
   }
 
-  uint32_t get_pkg_head_len() const
-  {
-      return PKG_HEAD_LEN;
-  }
+  //uint32_t get_pkg_head_len() const
+  //{
+  //    return PKG_HEAD_LEN;
+  //}
 
+  //返回是否有正在打包的数据
   bool is_has_pkg() const
   {
       return _hpos != _wpos;
@@ -168,7 +172,7 @@ struct net_sendbuf_t
 
   bool is_wrire_out_bound() const
   {
-    return _cookie1 == COOKIE or _cookie2 == COOKIE;
+    return _cookie1 != COOKIE or _cookie2 != COOKIE;
   }
 
 
@@ -192,6 +196,12 @@ struct net_sendbuf_t
       return _wpos - _hpos == PKG_HEAD_LEN;
   }
 
+  //返回已经发送完成的数据长度
+  size_t get_sended_len() const {
+      return _rpos;
+  }
+
+  //返回已经打包完成的可发送数据长度
   uint32_t get_sendable_len() const
   {
     assert(_hpos >= _rpos);
@@ -203,7 +213,7 @@ struct net_sendbuf_t
     return _buf + _rpos;
   }
 
-  uint32_t get_writable() const
+  uint32_t get_writable_len() const
   {
       if (_wpos == _hpos)
           return 0;
@@ -213,32 +223,33 @@ struct net_sendbuf_t
   }
 
 
-  pkg_head_t *get_pkg_head()
+  //当前必须有包,没有包返回nullptr
+  template <class R=pkg_head_t>
+  R* get_pkg_head()
   {
     assert(is_has_pkg());
-    return (pkg_head_t*)(_buf + _hpos);
+    if (_wpos == _rpos)
+        return nullptr;
+    return (R*)(_buf + _hpos);
   }
+
 
 
   void* get_pkg_body()
   {
     assert(is_has_pkg());
+    if (_wpos == _rpos)
+        return nullptr;
     return (void*)(_buf + _hpos + PKG_HEAD_LEN);
   }
 
-
-  size_t discard_sended_data(const size_t sendlen)
+  //并清理已经发送完成的数据,返回清理数据长度
+  size_t discard_sended_data()
   {
-    _rpos += sendlen;
-
-    assert(_wpos > _rpos);
-    assert(_wpos <= BUFSIZE);
-
     const uint32_t sendedLen = _rpos;
     if (sendedLen == 0) //unlikely
         return 0;
 
-    //TODO 超过最低水平线在移动
     memmove(_buf, _buf+_rpos, _wpos - _rpos);
 
     _rpos = 0;
@@ -255,6 +266,33 @@ struct net_sendbuf_t
 
     assert(_wpos <= BUFSIZE);
     return sendedLen;
+  }
+
+  //检测是否有足够的空间写入指定长度数据,并会清理可用空间
+  //@return true 可以写入,false空间不足无法写入
+  bool ensure_writable_len(const size_t datalen)
+  {
+      if (get_writable_len() >= datalen)
+          return true;
+
+      if (get_writable_len() + get_sended_len() >= datalen) {
+          discard_sended_data();
+          assert(get_writable_len() >= datalen);
+          return true;
+      }
+
+      return false;
+  }
+
+
+  //更新发送完数据，
+  void update_sended_data(const size_t sendlen)
+  {
+    _rpos += sendlen;
+
+    assert(_rpos <= _hpos);
+    assert(_wpos <= BUFSIZE);
+
   }
 
 
@@ -318,24 +356,103 @@ struct net_sendbuf_t
     return append_value(std::forward<T>(a)) + append_value(args...);
   }
 
-  //写buffer数据
-  //主要用来区分指针类型,到底是压指针的值还是指针指向的空间
+  //写buffer数据,保证足够有写入长度
   size_t append_buffer(const void *data, const size_t dataLen)
   {
-    ASSERT_RET(get_writable() >= dataLen, 0);
+    assert(get_writable_len() >= dataLen);
 
     memcpy(_buf+_wpos, data, dataLen);
     _wpos += dataLen;
     assert(_wpos <= BUFSIZE);
     return dataLen;
   }
+
+  //用于直接指针映射写入数据更新长度
+  void increase_write_len(size_t len)
+  {
+      _wpos += len;
+      assert(_wpos <= BUFSIZE);
+  }
 };
 
+
+
+template <class subclass_t, class pkg_head_t, size_t RECVBUF_SIZE, size_t SENDBUF_SIZE=RECVBUF_SIZE>
+struct net_fixbuff_t
+{
+
+   //返回能给个写入的长度
+   std::pair<char*, size_t> get_recv_buff() 
+   {
+       _recvbuf.discard_readed_data();
+
+       //如果buffsize 大于最大单个包长则不存full的情况
+
+       return {
+           _recvbuf.get_writable_buff(),
+           _recvbuf.get_writable_len()
+       };
+   }
+
+   void on_recv_complete(net_engine_t *eng, int sock, const char *data, const size_t datalen)
+   {
+       //接受的数据写入get_recv_buff 返回的空间,
+       assert(datalen != 0);
+       assert(_recvbuf._wpos + datalen <= _recvbuf.get_capacity());
+       _recvbuf._wpos += datalen;
+
+        while (const pkg_head_t *head = _recvbuf.peek_package_head())
+        {
+            if (not head->is_valid_head())
+            {
+                //TODO 只检查一次
+                static_cast<subclass_t*>(this)->on_recv_pkg_invalid(eng, sock, head);
+                return;
+            }
+
+            if (not _recvbuf.is_complete_pkg(head->get_pkg_len()))
+                return;
+
+            _recvbuf.read_package(head->get_pkg_len()); //XXX 省略掉参数
+
+            static_cast<subclass_t*>(this)->on_recv_pkg_complete(eng, sock, head, head->pkglen- sizeof(pkg_head_t));
+
+            if (eng->is_skip_current_event_process())
+                return;
+        }
+   }
+
+   //返回需要发送的数据
+   //自动实现
+   std::pair<const char*, ssize_t> get_send_data()
+   {
+     return {
+       _sendbuf.get_sendable_data(), _sendbuf.get_sendable_len()
+     };
+   }
+ 
+   //自动实现
+   void on_send_complete(net_engine_t *eng, int sock, const char *data, const ssize_t sendlen)
+   {
+     _sendbuf.update_sended_data(sendlen);
+
+    //已发送数据超过buf长度的1/4后调整
+    if (_sendbuf._rpos>= (SENDBUF_SIZE>>2))
+        _sendbuf.discard_sended_data();
+
+    if (_sendbuf.get_sendable_len() != 0)
+        static_cast<subclass_t*>(this)->post_send(eng, sock);
+   }
+
+
+ protected:
+   net_recvbuf_t<pkg_head_t, RECVBUF_SIZE> _recvbuf;
+   net_sendbuf_t<pkg_head_t, SENDBUF_SIZE> _sendbuf;
+};
 
 /**
  * 组合IO层 + 收发buffer + 解包功能.
  * usage:
- * 'delete this' safe in callback //TODO
  * <code>
  * class BinClient : public tcp_client_t<BinClient, pkg_head_t, _4K>  {
  * //需要实现如需函数
@@ -355,74 +472,37 @@ struct net_sendbuf_t
  * }
  * </code>
  */
-//template <class subclass_t, class pkg_head_t, size_t RECVBUF_SIZE, size_t SENDBUF_SIZE=RECVBUF_SIZE>
-struct tcp_client_t : public esock::async_tcp_client_hanndler_t<tcp_client_t>
-{
 
-   //返回能给个写入的长度
-   std::pair<char*, size_t> get_recv_buff() 
-   {
-           _recvbuf.discard_readed_data();
-
-       //TODO drop data
-
-       return {
-           _recvbuf.get_writable_buff(),
-           _recvbuf.get_writable_len()
-       };
-   }
-
-   void on_recv_complete(net_engine_t *eng, int sock, const char *data, const size_t datalen)
-   {
-       //接受的数据写入get_recv_buff 返回的空间,
-       assert(datalen != 0);
-       assert(_recvbuf._wpos + datalen <= _recvbuf.get_capacity());
-       _recvbuf._wpos += datalen;
-
-        while (const pkg_head_t *head = _recvbuf.peek_package_head())
-        {
-            //解析数据，调用子类HandleNetPkg
-            //使用CRTP,实现编译期重载
-            if (not head->is_valid_head())
-            {
-                //TODO 只检查一次
-                static_cast<subclass_t*>(this)->on_recv_invalid_pkg(eng, sock, head);
-                return;
-            }
-
-            if (not _recvbuf.is_complete_pkg(head->pkgLen))
-                return;
-
-            _recvbuf.read_package(head->pkgLen); //XXX 省略掉参数
-
-            if (not static_cast<subclass_t*>(this)->on_recv_pkg_complete(eng, sock, head, head->pkgLen - sizeof(pkg_head_t)))
-                return;
-        }
-   }
-
-   //返回需要发送的数据
-   //自动实现
-   std::pair<char*, ssize_t> get_send_data()
-   {
-     return {
-       _sendbuf.get_sendable_data(),
-       _sendbuf.get_sendable_len(),
-     };
-   }
- 
-   //自动实现
-   void on_send_complete(net_engine_t *eng, int sock, const char *data, const ssize_t sendlen)
-   {
-     _sendbuf.discard_sended_data(sendlen);
-     if (_sendbuf.get_sendable_len() != 0)
-       static_cast<subclass_t*>(this)->post_send(eng, sock);
-   }
+template <class subclass_t, class pkg_head_t, size_t RECVBUF_SIZE, size_t SENDBUF_SIZE=RECVBUF_SIZE>
+struct tcp_client_t 
+: public async_tcp_client_hanndler_t<subclass_t>
+, public net_fixbuff_t<subclass_t, pkg_head_t, RECVBUF_SIZE, SENDBUF_SIZE>
+{};
 
 
- protected:
-   net_recvbuf_t<pkg_head_t, RECVBUF_SIZE> _recvbuf;
-   net_sendbuf_t<pkg_head_t, SENDBUF_SIZE> _sendbuf;
-};
 
+/**
+ * 组合IO层 + 收发buffer + 解包功能,方便业务层使用.
+ * usage:
+ * <code>
+ * class BinServerConn: public tcp_server_conn_t<BinServerConn, pkg_head_t, _4K>  {
+ * //需要实现如需函数
+ * //connect callback
+ * 
+ * //当发现一个无效包时回调，应该关闭sock,如果不关闭行为未定义
+ * void on_recv_pkg_invalid(net_engine_t *eng, int sock, const pkg_head_t *head)
+ * void on_recv_pkg_complete(net_engine_t *eng, int sock, const pkg_head_t *pkg, const size_t bodylen)
+ *
+ * void on_peer_close(net_engine_t *eng, int sock)
+ * void on_error_occur(net_engine_t *eng, int sock, int error)
+ *
+ * }
+ * </code>
+ */
+template <class subclass_t, class pkg_head_t, size_t RECVBUF_SIZE, size_t SENDBUF_SIZE=RECVBUF_SIZE>
+struct tcp_server_conn_t 
+  : public tcp_server_conn_handler_t<subclass_t>
+  , public net_fixbuff_t<subclass_t, pkg_head_t, RECVBUF_SIZE, SENDBUF_SIZE>
+{};
 
 } //end namespace

@@ -4,16 +4,19 @@
 //definition client <-> server protocol struct
 
 enum {
-    PROTO_MAX_BODY_SIZE = 1<<10 ,
+    PROTO_MAX_BODY_SIZE = 4<<10 ,
     PROTO_MAGIC = 0x33445566,
-    PROTO_ADD_CMD=1,
+    PROTO_ADD_CMD_REQ=1,
+    PROTO_ADD_CMD_RSP=2,
 };
 
 struct proto_head_t
 {
-    bool is_valid_head() {return true;}
+    bool is_valid_head() const {return magic == PROTO_MAGIC and pkglen <= PROTO_MAX_BODY_SIZE;}
+    uint32_t get_pkg_len() const {return pkglen;}
+
     uint32_t magic;
-    uint32_t body_len;
+    uint32_t pkglen; //head + body
     uint8_t  cmd;
     uint8_t  ver;
 
@@ -32,13 +35,12 @@ struct proto_add_request_t
         int32_t num2;
     } pair[0];
 
-}__attribute__((packed));;
+}__attribute__((packed));
 
 //return add result
 struct proto_add_response_t
 {
     proto_head_t head;
     uint32_t count;
-    uint64_t resluts[0];
-
-};
+    int64_t resluts[0];
+}__attribute__((packed));

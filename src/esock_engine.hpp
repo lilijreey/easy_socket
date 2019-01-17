@@ -114,18 +114,6 @@ class net_engine_t : detail::noncopyable_t
 
   void stop_event_loop() {_is_stop = true;}
 
-
- private:
-  net_engine_t() = default;
-  int init();
-
- private:
-  void async_tcp_connect(const std::string &ip, 
-                        const uint16_t port, 
-                        on_tcp_conn_complete_fn_t, 
-                        on_tcp_conn_failed_fn_t,
-                        void *user_arg=nullptr);
-
  public:
   //无法重复添加
   //保证对应sockslot 已经设置正确
@@ -139,6 +127,27 @@ class net_engine_t : detail::noncopyable_t
   //void epoll_del_sock(int fd);
   void epoll_del_sock(sockinfo_t *sinfo);
 
+ public:
+  bool is_skip_current_event_process() const
+  {
+      return _is_skip_current_event_process;
+  }
+
+
+ private:
+  net_engine_t() = default;
+  int init();
+
+
+ private:
+  void async_tcp_connect(const std::string &ip, 
+                        const uint16_t port, 
+                        on_tcp_conn_complete_fn_t, 
+                        on_tcp_conn_failed_fn_t,
+                        void *user_arg=nullptr);
+
+
+
 
  private:
   bool _is_stop = false;
@@ -149,7 +158,9 @@ class net_engine_t : detail::noncopyable_t
 
  private:
   int _efd = -1;
+  int  _current_fd;
   bool _is_process= false;
+  bool _is_skip_current_event_process =false;
   epoll_event _events[MAX_EVENT_SIZE];
 
 };
