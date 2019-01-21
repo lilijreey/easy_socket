@@ -59,7 +59,7 @@ class EchoServerConn
 };
 
 class EchoServer 
-  : public esock::tcp_server_handler_t<EchoServer, EchoServerConn>
+  : public esock::tcp_server_accept_handler_t<EchoServer, EchoServerConn>
 {
  private:
     esock::tcp_listener_t *_listener=nullptr;

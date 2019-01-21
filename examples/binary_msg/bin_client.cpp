@@ -17,7 +17,7 @@ using esock::net_engine_t;
 
 
 class BinClient 
-  : public esock::tcp_client_t<BinClient, proto_head_t, 4 <<10>
+  : public esock::tcp_active_conn_t<BinClient, proto_head_t, 4 <<10>
 {
  private:
   int _sock=-1;
@@ -131,7 +131,6 @@ public:
        switch (head->cmd) {
        case PROTO_ADD_CMD_RSP:
            handle_add_rsp(eng, (proto_add_response_t*)head, bodylen);
-           delete this;
            //eng->delete_this(this);
            //eng->stop_event_loop();
            return;

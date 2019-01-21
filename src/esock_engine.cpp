@@ -57,10 +57,10 @@ net_engine_t::~net_engine_t()
   _is_stop = true;
   if (_efd != -1)
   {
+      //TODO clear all sockinfo
     ::close(_efd);
     _efd = -1;
     sockpool.uninit();
-    //TODO set all sockinfo _eng info
   }
 }
 

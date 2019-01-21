@@ -298,7 +298,7 @@ struct net_sendbuf_t
 
   //丢弃到从上次make_next_pkg后写入的数据
   //返回丢弃的PkgBody长度
-  uint32_t discard_write_data()
+  uint32_t discard_pkg_data()
   {
       assert(is_has_pkg());
       uint32_t discardLen = _wpos - _hpos - PKG_HEAD_LEN;
@@ -415,7 +415,7 @@ struct net_fixbuff_t
 
             _recvbuf.read_package(head->get_pkg_len()); //XXX 省略掉参数
 
-            static_cast<subclass_t*>(this)->on_recv_pkg_complete(eng, sock, head, head->pkglen- sizeof(pkg_head_t));
+            static_cast<subclass_t*>(this)->on_recv_pkg_complete(eng, sock, head, head->get_pkg_len()- sizeof(pkg_head_t));
 
             if (eng->is_skip_current_event_process())
                 return;
@@ -454,7 +454,7 @@ struct net_fixbuff_t
  * 组合IO层 + 收发buffer + 解包功能.
  * usage:
  * <code>
- * class BinClient : public tcp_client_t<BinClient, pkg_head_t, _4K>  {
+ * class BinClient : public tcp_active_conn_t<BinClient, pkg_head_t, _4K>  {
  * //需要实现如需函数
  * //connect callback
  * void on_conn_connecting(net_engine_t *eng, const char *ip, const uint16_t port, int sock)
@@ -474,7 +474,7 @@ struct net_fixbuff_t
  */
 
 template <class subclass_t, class pkg_head_t, size_t RECVBUF_SIZE, size_t SENDBUF_SIZE=RECVBUF_SIZE>
-struct tcp_client_t 
+struct tcp_active_conn_t
 : public async_tcp_client_hanndler_t<subclass_t>
 , public net_fixbuff_t<subclass_t, pkg_head_t, RECVBUF_SIZE, SENDBUF_SIZE>
 {};
@@ -485,7 +485,7 @@ struct tcp_client_t
  * 组合IO层 + 收发buffer + 解包功能,方便业务层使用.
  * usage:
  * <code>
- * class BinServerConn: public tcp_server_conn_t<BinServerConn, pkg_head_t, _4K>  {
+ * class BinServerConn: public tcp_passive_conn_t<BinServerConn, pkg_head_t, _4K>  {
  * //需要实现如需函数
  * //connect callback
  * 
@@ -500,7 +500,7 @@ struct tcp_client_t
  * </code>
  */
 template <class subclass_t, class pkg_head_t, size_t RECVBUF_SIZE, size_t SENDBUF_SIZE=RECVBUF_SIZE>
-struct tcp_server_conn_t 
+struct tcp_passive_conn_t 
   : public tcp_server_conn_handler_t<subclass_t>
   , public net_fixbuff_t<subclass_t, pkg_head_t, RECVBUF_SIZE, SENDBUF_SIZE>
 {};

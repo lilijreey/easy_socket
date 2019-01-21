@@ -14,6 +14,8 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/socket.h>
+#include <netinet/tcp.h>
+#include <netinet/in.h>
 
 namespace esock {
 
@@ -43,6 +45,12 @@ static inline int set_sock_reuseaddr(int sock)
 {
   int opt = 1;
   return setsockopt(sock, SOL_SOCKET,  SO_REUSEADDR, &opt, sizeof(opt));
+}
+
+static inline int set_sock_nodelay(int sock)
+{
+    int val = 1;
+    return setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, &val, sizeof(val));
 }
 
 //TODO

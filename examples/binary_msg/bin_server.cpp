@@ -13,7 +13,7 @@ class BinServer;
 
 //接受\n结尾字符，然后发送回去
 class BinServerConn
-  : public esock::tcp_server_conn_t<BinServerConn, proto_head_t, 4<<10>
+  : public esock::tcp_passive_conn_t<BinServerConn, proto_head_t, 4<<10>
 {
  
  private:
@@ -69,8 +69,8 @@ class BinServerConn
        printf("send count:%d\n",rsp->count);
        //eng->skip_current_event_process();
        //delete(this);
-       if (--times == 0)
-           eng->stop_event_loop();
+       //if (--times == 0)
+       //    eng->stop_event_loop();
 
     }
 
@@ -92,7 +92,7 @@ class BinServerConn
 };
 
 class BinServer 
-  : public esock::tcp_server_handler_t<BinServer, BinServerConn>
+  : public esock::tcp_server_accept_handler_t<BinServer, BinServerConn>
 {
  private:
     esock::tcp_listener_t *_listener=nullptr;

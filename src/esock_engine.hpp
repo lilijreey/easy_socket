@@ -90,8 +90,8 @@ class net_engine_t : detail::noncopyable_t
 
   
  public:  //tcp server
-  template <class tcp_server_handler_subclass>
-  int add_tcp_server(tcp_listener_t *listener, tcp_server_handler_subclass *ins);
+  template <class tcp_server_accept_handler_subclass>
+  int add_tcp_server(tcp_listener_t *listener, tcp_server_accept_handler_subclass *ins);
 
 
 

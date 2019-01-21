@@ -91,7 +91,7 @@ struct tcp_server_conn_handler_t
  * 需要实现
  * usage.
  * <code>
- * EchoServerConn: tcp_server_conn_hanndler_t<EchoServerConn> {
+ * EchoServer: tcp_server_accept_handler_t<EchoServerConn> {
  *  实现下面几个回调函数
  *
  *  返回一个链接实例，如果返回nullptr, 则会自动关闭链接.
@@ -107,7 +107,7 @@ struct tcp_server_conn_handler_t
  */
 
 template <class subclass_t, class tcp_server_conn_t>
-struct tcp_server_handler_t
+struct tcp_server_accept_handler_t
 {
   //tcp_server_conn_t *on_accept_complete(net_engine_t *eng, tcp_listener_t *ins, int conn, sockaddr_storage addr);
   //void on_accept_failed(net_engine_t *eng, tcp_listener_t *ins, int error);

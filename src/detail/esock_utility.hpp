@@ -15,7 +15,8 @@
     
 namespace esock { namespace detail {
 
-#define esock_debug_log(fmt, ...) printf("%s:%d " fmt , __FILE__, __LINE__, ##__VA_ARGS__)
+//#define esock_debug_log(fmt, ...) printf("%s:%d " fmt , __FILE__, __LINE__, ##__VA_ARGS__)
+#define esock_debug_log(fmt, ...) 
 
 
 #define esock_assert(exp) assert(exp)
