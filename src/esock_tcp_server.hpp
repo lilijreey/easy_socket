@@ -115,7 +115,7 @@ struct tcp_server_accept_handler_t
   static void on_tcp_acceptable(net_engine_t *eng, tcp_listener_t *ins, int listen_fd, void *arg)
   {
     sockaddr_storage addr;
-    socklen_t addrlen;
+    socklen_t addrlen = sizeof(addr);
     while (true)
     {
       int ret = ::accept4(listen_fd, (sockaddr*)&addr, &addrlen, SOCK_NONBLOCK);

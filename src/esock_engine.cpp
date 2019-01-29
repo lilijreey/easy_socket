@@ -255,7 +255,7 @@ int net_engine_t::process_event(std::chrono::milliseconds wait_event_ms)
           sinfo->_state = ESOCKSTATE_ERROR_OCCUES;
           int error = get_sock_error(fd);
           //TODO IP
-          ((on_tcp_conn_failed_fn_t)sinfo->_on_recvable_fn)(this, nullptr, 0, error, -1, sinfo->_arg);
+          ((on_tcp_conn_failed_fn_t)sinfo->_on_recvable_fn)(this, nullptr, 0, error, fd, sinfo->_arg);
           close_socket(fd);
           continue;
         }
@@ -341,7 +341,6 @@ int net_engine_t::close_socket(int fd)
     esock_set_error_msg("a invilded fd %d", fd);
     return -1;
   }
-  esock_assert(sinfo->_eng == this);
   sinfo->close(fd);
   return 0;
 }

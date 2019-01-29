@@ -79,6 +79,7 @@ int tcp_listener_t::init(const std::string &ip, uint16_t port)
     {
         esock_set_syserr_msg("bind %s %d failed", ip.c_str(), port);
         ::close(_listen_fd);
+        _listen_fd = -1;
         return -1;
     }
 

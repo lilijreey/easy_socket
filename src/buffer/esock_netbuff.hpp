@@ -51,6 +51,7 @@ struct net_recvbuf_t// like netty channel
     {
         assert(BUFSIZE >= _wpos);
         return BUFSIZE - _wpos;
+        return 0;
     }
 
     //消费数据,不检验参数，请保证参数有效
@@ -74,7 +75,7 @@ struct net_recvbuf_t// like netty channel
         {
             return nullptr;
         }
-        return (pkg_head_t*)_buf + _rpos;
+        return (pkg_head_t*)(_buf + _rpos);
     }
 
 
@@ -233,6 +234,10 @@ struct net_sendbuf_t
     return (R*)(_buf + _hpos);
   }
 
+  bool is_can_make_pkg() const
+  {
+      return is_has_pkg() and not is_empty_pkg_body();
+  }
 
 
   void* get_pkg_body()
@@ -372,6 +377,11 @@ struct net_sendbuf_t
   {
       _wpos += len;
       assert(_wpos <= BUFSIZE);
+  }
+
+  char *get_writable_buff()
+  {
+      return _buf + _wpos;
   }
 };
 

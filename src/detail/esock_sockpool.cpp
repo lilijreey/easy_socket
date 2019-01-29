@@ -58,7 +58,7 @@ void sockpool_t::uninit()
 void sockinfo_t::close(int sock) {
   esock_assert(sock > 0);
   esock_assert(sock == get_fd());
-  esock_assert(not is_closed());
+  if (is_closed()) return;
 
   //remove from epoll
   if (_is_in_epoll) {
