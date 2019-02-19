@@ -11,11 +11,14 @@
 #pragma once
 
 
+#include <utility>
+#include <string>
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/socket.h>
 #include <netinet/tcp.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 
 namespace esock {
 
@@ -53,9 +56,60 @@ static inline int set_sock_nodelay(int sock)
     return setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, &val, sizeof(val));
 }
 
-//TODO
-//get_local_addr();
-//get_peer_addr();
+static inline
+std::pair<bool, sockaddr_storage> 
+get_sock_localaddr(int sock)
+{
+    sockaddr_storage addr;
+    socklen_t addrlen = sizeof(addr);
 
+    if (::getsockname(sock, (sockaddr*)&addr, &addrlen) == -1)
+        return {false, addr};
+
+    return {true, addr};
+}
+
+
+static inline
+std::pair<bool, sockaddr_storage> 
+get_sock_peeraddr(int sock)
+{
+    sockaddr_storage addr;
+    socklen_t addrlen = sizeof(addr);
+
+    if (::getpeername(sock, (sockaddr*)&addr, &addrlen) == -1)
+        return {false, addr};
+
+    return {true, addr};
+}
+
+static inline
+std::string get_sockaddr_ip(const sockaddr_storage &addr)
+{
+    char buf[INET6_ADDRSTRLEN]={0};
+
+    if (addr.ss_family == AF_INET)
+    {
+        inet_ntop(addr.ss_family, &(((sockaddr_in*)&addr)->sin_addr), buf, INET_ADDRSTRLEN);
+    }
+    else if (addr.ss_family == AF_INET6)
+    {
+        inet_ntop(addr.ss_family, &(((sockaddr_in6*)&addr)->sin6_addr), buf, INET6_ADDRSTRLEN);
+    }
+
+    return buf;
+}
+
+static inline
+int get_sockaddr_port(const sockaddr_storage &addr)
+{
+    if (addr.ss_family == AF_INET)
+    {
+        return ntohs(((sockaddr_in*)&addr)->sin_port);
+    }
+
+    //(addr.ss_family == AF_INET6)
+    return ntohs(((sockaddr_in6*)&addr)->sin6_port);
+}
 
 }//end namespace

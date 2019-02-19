@@ -115,6 +115,13 @@ struct net_recvbuf_t// like netty channel
         return get_readable_len() >= pkglen;
     }
 
+
+    void increase_write_len(size_t len)
+    {
+      _wpos += len;
+      assert(_wpos <= BUFSIZE);
+
+    }
 };
 
 

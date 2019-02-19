@@ -97,8 +97,8 @@ int tcp_listener_t::start_listen()
 {
   if (-1 == ::listen(_listen_fd, 128))
   {
-    sockpool.get_info(_listen_fd)->_state = ESOCKSTATE_ERROR_OCCUES;
-    //TODO close it
+      close_socket(_listen_fd);
+      _listen_fd = -1;
     return -1;
   }
 

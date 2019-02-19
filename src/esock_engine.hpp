@@ -29,13 +29,11 @@ struct sockinfo_t;
  * 回调类型
  */
 //tcp_client cb
-using on_tcp_conn_complete_fn_t = void(*)(net_engine_t *eng, const char *ip, const uint16_t port, int sock, void *arg);
-using on_tcp_conn_failed_fn_t   = void(*)(net_engine_t *eng, const char *ip, const uint16_t port, const int err, int sock, void *arg);
+using on_tcp_conn_complete_fn_t = void(*)(net_engine_t *eng, int sock, void *arg);
+using on_tcp_conn_failed_fn_t   = void(*)(net_engine_t *eng, int sock, const int err, void *arg);
 
 //tcp_server cb
 using on_tcp_listener_acceptable_fn_t = void(*)(net_engine_t *eng, tcp_listener_t *ins, int listen_fd, void *arg);
-//using on_tcp_accept_complete_fn_t = void(*)(net_engine_t *eng, tcp_listener_t *svr, int sock, void *user_arg);
-//using on_tcp_accept_failed_fn_t   = void(*)(net_engine_t *eng, tcp_listener_t *svr, int errno, void *user_arg);
 
 //tcp connect cb
 using on_tcp_conn_recvable_fn_t = void(*)(net_engine_t *eng, int sock, int _event, void *arg);
@@ -54,9 +52,19 @@ class net_engine_t : detail::noncopyable_t
 {
  public:
   static net_engine_t * make();
+
+  /**
+   * @brief: Destroy net_engine_t instance return by make
+   * and do not auto close sockets join in this eng.
+   * you should keep all socket have been closed before call this;
+   * @param eng [in,out] will be set to nullptr;
+   */
   static void unmake(net_engine_t *&eng);
 
  public:
+  /**
+   * see unmake()
+   */
   ~net_engine_t();
 
  public:
@@ -65,7 +73,6 @@ class net_engine_t : detail::noncopyable_t
  public: //tcp connect
   //发起异步链接请求
   //面向OO T 类型必须继承tcp_connect_hanndler_t
-  //BUG TODO 链接过程中对象销毁
   template <class async_tcp_connect_hanndler_subclass>
   void async_tcp_connect(const std::string &ip, 
                          const uint16_t port, 
@@ -86,8 +93,6 @@ class net_engine_t : detail::noncopyable_t
   int add_tcp_listener(tcp_listener_t *listener,
                        on_tcp_listener_acceptable_fn_t on_acceptable_fn,
                        void *arg);
-  //int del_tcp_listener //TODO
-
   
  public:  //tcp server
   template <class tcp_server_accept_handler_subclass>
@@ -101,12 +106,12 @@ class net_engine_t : detail::noncopyable_t
 
 
  public: //process event
-  int process_event(std::chrono::milliseconds wait_event_ms);
+  int process_event(std::chrono::milliseconds wait_ms);
 
-  int process_event_loop(std::chrono::milliseconds wait_event_ms)
+  int process_event_loop(std::chrono::milliseconds wait_ms)
   {
     while (is_runing()) {
-      if (-1 == process_event(wait_event_ms))
+      if (-1 == process_event(wait_ms))
         return -1;
     }
     return 0;

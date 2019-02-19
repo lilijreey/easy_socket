@@ -84,6 +84,8 @@ class sockpool_t : detail::noncopyable_t
   int         _size{};
 
  public:
+  void clear_epoll_pointer(const net_engine_t *eng);
+
   sockinfo_t* get_info(int fd) {
     if (fd > _size) return nullptr;
     return _socks + fd;

@@ -54,6 +54,16 @@ void sockpool_t::uninit()
 }
 
 
+void sockpool_t::clear_epoll_pointer(const net_engine_t *eng)
+{
+    for (int i=0; i < _size; ++i)
+    {
+        if (_socks[i]._eng == eng) {
+            _socks[i]._is_in_epoll = false;
+            _socks[i]._eng = nullptr;
+        }
+    }
+}
 
 void sockinfo_t::close(int sock) {
   esock_assert(sock > 0);

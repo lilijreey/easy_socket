@@ -57,9 +57,9 @@ net_engine_t::~net_engine_t()
   _is_stop = true;
   if (_efd != -1)
   {
-      //TODO clear all sockinfo
     ::close(_efd);
     _efd = -1;
+    sockpool.clear_epoll_pointer(this);
     sockpool.uninit();
   }
 }
@@ -113,7 +113,7 @@ void net_engine_t::async_tcp_connect(const std::string &ip,
         goto error;
 
       //not real failed
-      on_conn_failed_fn(this, ip.c_str(), port, EINPROGRESS, sock, user_arg);
+      on_conn_failed_fn(this, sock, EINPROGRESS, user_arg);
       return ;
     }
 
@@ -121,12 +121,12 @@ void net_engine_t::async_tcp_connect(const std::string &ip,
     goto error;
   }
 
-  on_conn_complete_fn(this, ip.c_str(), port, sock, user_arg);
+  on_conn_complete_fn(this, sock, user_arg);
   return;
 
 error:
   if (sock != -1) close_socket(sock);
-  on_conn_failed_fn(this, ip.c_str(), port, errno, -1, user_arg);
+  on_conn_failed_fn(this, -1, errno, user_arg);
 
 }
 
@@ -254,8 +254,7 @@ int net_engine_t::process_event(std::chrono::milliseconds wait_event_ms)
           //error
           sinfo->_state = ESOCKSTATE_ERROR_OCCUES;
           int error = get_sock_error(fd);
-          //TODO IP
-          ((on_tcp_conn_failed_fn_t)sinfo->_on_recvable_fn)(this, nullptr, 0, error, fd, sinfo->_arg);
+          ((on_tcp_conn_failed_fn_t)sinfo->_on_recvable_fn)(this, error, fd, sinfo->_arg);
           close_socket(fd);
           continue;
         }
@@ -279,7 +278,7 @@ int net_engine_t::process_event(std::chrono::milliseconds wait_event_ms)
             if (sinfo->_state == ESOCKSTATE_CONNECTING) {
               sinfo->_state = ESOCKSTATE_ESTABLISHED;
               epoll_del_sock(sinfo);
-              ((on_tcp_conn_complete_fn_t)sinfo->_on_sendable_fn)(this, nullptr, 0, fd, sinfo->_arg);
+              ((on_tcp_conn_complete_fn_t)sinfo->_on_sendable_fn)(this, fd, sinfo->_arg);
               continue;
             }
 
