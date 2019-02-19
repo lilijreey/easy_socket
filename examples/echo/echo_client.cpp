@@ -35,16 +35,16 @@ public:
   }
 
  public: //callback
-   void on_conn_connecting(net_engine_t *eng, const char *ip, const uint16_t port, int sock)
+   void on_conn_connecting(net_engine_t *eng, int sock)
    {
        assert(sock != -1);
        printf("on connectiong fd:%d\n", sock);
        _sock = sock;
    }
 
-   void on_conn_complete(net_engine_t *eng, const char *ip, const uint16_t port, int sock)
+   void on_conn_complete(net_engine_t *eng, int sock)
    {
-     printf("on conn %s:%d ok sock:%d\n", ip, port, sock);
+     printf("on conn %s:%d ok sock:%d\n", svrIp.c_str(), svrPort, sock);
      sendPos = 0;
      //send hello word\n
      const char *msg = "hello world\n";
@@ -53,9 +53,9 @@ public:
      post_send(eng, sock);
    }
  
-   void on_conn_failed(net_engine_t *eng, const char *ip, const uint16_t port, const int err)
+   void on_conn_failed(net_engine_t *eng, const int err)
    {
-     printf("on conn %s:%d failed reconnct %s\n", ip, port, strerror(err));
+     printf("on conn %s:%d failed reconnct %s\n", svrIp.c_str(), svrPort, strerror(err));
      sleep(1);
      //reconnect
      //eng->async_tcp_client("127.0.0.1", 5566, this);

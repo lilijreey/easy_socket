@@ -254,7 +254,7 @@ int net_engine_t::process_event(std::chrono::milliseconds wait_event_ms)
           //error
           sinfo->_state = ESOCKSTATE_ERROR_OCCUES;
           int error = get_sock_error(fd);
-          ((on_tcp_conn_failed_fn_t)sinfo->_on_recvable_fn)(this, error, fd, sinfo->_arg);
+          ((on_tcp_conn_failed_fn_t)sinfo->_on_recvable_fn)(this, fd, error, sinfo->_arg);
           close_socket(fd);
           continue;
         }
