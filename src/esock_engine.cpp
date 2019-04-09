@@ -244,7 +244,7 @@ int net_engine_t::process_event(std::chrono::milliseconds wait_event_ms)
         continue;
       case ESOCKTYPE_TCP_LISTENER:
         ((on_tcp_listener_acceptable_fn_t)sinfo->_on_recvable_fn)(this,
-                                                                  static_cast<tcp_listener_t*>(sinfo->_on_recvable_fn),
+                                                                  static_cast<tcp_listener_t*>(sinfo->_on_sendable_fn),
                                                                   fd, 
                                                                   sinfo->_arg);
         continue;
