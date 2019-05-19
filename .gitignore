@@ -3,3 +3,5 @@
 *.o
 *.a
 *.swo
+.vscode
+.ycm_extra_conf.py
