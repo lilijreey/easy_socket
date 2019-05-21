@@ -133,7 +133,7 @@ struct tcp_server_accept_handler_t
       sockinfo_t *sinfo = sockpool.get_info(ret);
       sinfo->init(ESOCKTYPE_TCP_CONNECT);
 
-      if (-1 == eng->epoll_add_sock(ret, EPOLLIN|EPOLLOUT,
+      if (-1 == eng->epoll_add_sock(ret, EPOLLIN,
                                     (void*)tcp_server_conn_t::on_conn_recvable_helper,
                                     (void*)tcp_server_conn_t::on_conn_sendable_helper,
                                     nullptr)) //调用on_tcp_acceptable 成功后设置obj

@@ -153,8 +153,7 @@ int net_engine_t::epoll_add_sock(int sock,
 
 
   epoll_event ev;
-  //ev.events = events ;// | EPOLLET;
-  ev.events = events | EPOLLET;
+  ev.events = events & ~EPOLLET; //remove ET if set
   ev.data.ptr = (void*)((uintptr_t)sinfo | !sinfo->_instance);
 
   int ret = epoll_ctl(_efd, EPOLL_CTL_ADD, sock, &ev);
@@ -166,6 +165,8 @@ int net_engine_t::epoll_add_sock(int sock,
 
   sinfo->_eng = this;
   sinfo->_is_in_epoll = 1;
+  sinfo->_is_set_epollin = events & EPOLLIN;
+  sinfo->_is_set_epollout = events & EPOLLOUT;
   sinfo->_on_recvable_fn = on_recvable;
   sinfo->_on_sendable_fn = on_sendable;
   sinfo->_arg = arg;
@@ -230,12 +231,11 @@ int net_engine_t::process_event(std::chrono::milliseconds wait_event_ms)
       continue;
     }
 
+    //当EPOLLERR出现时，调用read 可以发现错，
+    //EPOLLHUP 调用read返回0
     if (events & (EPOLLERR | EPOLLHUP))
       events |= (EPOLLIN | EPOLLOUT);
 
-
-    //当EPOLLERR出现时，调用read 可以发现错，
-    //EPOLLHUP 调用read返回0
     if (events & EPOLLIN) {
       switch (sinfo->_type) {
       case ESOCKTYPE_NONE:
@@ -308,6 +308,8 @@ void net_engine_t::epoll_del_sock(sockinfo_t *sinfo)
     esock_set_syserr_msg("epoll_ctl del fd %d failed\n", fd);
 
   sinfo->_is_in_epoll = 0;
+  sinfo->_is_set_epollin = 0;
+  sinfo->_is_set_epollout= 0;
 
   if (_current_fd == fd) 
       _is_skip_current_event_process = true;
@@ -344,7 +346,6 @@ int net_engine_t::close_socket(int fd)
   return 0;
 }
 
-
 int net_engine_t::add_tcp_listener(tcp_listener_t *listener,
                      on_tcp_listener_acceptable_fn_t on_acceptable_fn,
                      void *arg)
@@ -369,6 +370,65 @@ int net_engine_t::add_tcp_listener(tcp_listener_t *listener,
   esock_assert(not sinfo->_is_in_epoll);
 
   return epoll_add_sock(listen_fd, EPOLLIN, (void*)on_acceptable_fn, (void*)listener, arg);
+}
+
+
+int net_engine_t::add_sendable_ev(int sock)
+{
+  sockinfo_t *sinfo = sockpool.get_info(sock);
+
+  if(sinfo->_is_set_epollout) {
+    esock_debug_log("fd already set epollout");
+    return 0;
+  }
+  esock_assert(not sinfo->is_closed());
+  esock_assert(sinfo->_eng == this);
+
+  epoll_event ev;
+  if (sinfo->_is_set_epollin) 
+    ev.events = EPOLLIN | EPOLLOUT;
+  else
+    ev.events = EPOLLOUT;
+
+  ev.data.ptr = (void*)((uintptr_t)sinfo | sinfo->_instance); //取饭还原之前的
+
+  int ret = epoll_ctl(_efd, EPOLL_CTL_MOD, sock, &ev);
+  if (ret == -1)
+  {
+    esock_set_syserr_msg("epoll_ctl_mod fd %d failed", sock);
+    return -1;
+  };
+
+  sinfo->_is_set_epollout = true;
+
+  esock_debug_log("add sendable fd:%d in epoll ok\n", sock);
+  return 0;
+}
+
+int net_engine_t::del_sendable_ev(int sock)
+{
+  sockinfo_t *sinfo = sockpool.get_info(sock);
+
+  esock_assert(not sinfo->is_closed());
+  esock_assert(sinfo->_eng == this);
+  esock_assert(sinfo->_is_set_epollin);
+  esock_assert(sinfo->_is_set_epollout);
+
+  epoll_event ev;
+  ev.events = EPOLLIN;
+  ev.data.ptr = (void*)((uintptr_t)sinfo | sinfo->_instance); //取饭还原之前的
+
+  int ret = epoll_ctl(_efd, EPOLL_CTL_MOD, sock, &ev);
+  if (ret == -1)
+  {
+    esock_set_syserr_msg("epoll_ctl_mod fd %d failed", sock);
+    return -1;
+  };
+
+  sinfo->_is_set_epollout = false;
+
+  esock_debug_log("del sendable fd:%d in epoll ok\n", sock);
+  return 0;
 }
 
 

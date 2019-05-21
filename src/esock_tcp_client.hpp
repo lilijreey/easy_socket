@@ -141,7 +141,7 @@ struct async_tcp_client_hanndler_t
     if (sockpool.get_info(sock)->is_closed())
       return;
 
-    if (-1 == eng->epoll_add_sock(sock, EPOLLIN|EPOLLOUT,
+    if (-1 == eng->epoll_add_sock(sock, EPOLLIN,
                                   (void*)on_conn_recvable_helper,
                                   (void*)on_conn_sendable_helper,
                                   arg))

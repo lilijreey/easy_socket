@@ -89,8 +89,15 @@ void __post_send(net_engine_t *eng, int sock, T *conn)
   ssize_t datalen= send_data.second;
   ssize_t sendlen = 0;
 
-  if (datalen == 0)  //使用ET模式无需删除OUT事件
+  if (datalen == 0) 
+  {
+    if (eng->is_add_sendable_ev(sock))
+    {
+      if (-1 == eng->del_sendable_ev(sock))
+        conn->on_error_occur(eng, sock, errno);
+    }
     return;
+  }
 
   while (sendlen < datalen) {
     ssize_t ret = ::send(sock, data + sendlen, datalen -sendlen, MSG_NOSIGNAL);
@@ -99,10 +106,12 @@ void __post_send(net_engine_t *eng, int sock, T *conn)
       case EINTR: 
         continue;
       case EAGAIN:
-        //esock_debug_log("send fd:%d eagain\n", sock);
-        if (sendlen != 0)
-          conn->on_send_complete(eng, sock, data, sendlen);
-        return;
+        if (-1 == eng->add_sendable_ev(sock))
+        {
+          conn->on_error_occur(eng, sock, errno);
+          return;
+        }
+        break;
       default:
         conn->on_error_occur(eng, sock, errno);
         return;

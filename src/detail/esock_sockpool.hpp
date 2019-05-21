@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include <strings.h>
 #include "../esock_socket.hpp"
 #include "esock_utility.hpp"
 
@@ -34,6 +35,8 @@ struct sockinfo_t
 {
   uint8_t _instance:1; 
   uint8_t _is_in_epoll:1; 
+  uint8_t _is_set_epollin:1;
+  uint8_t _is_set_epollout:1;
   uint8_t _type;
   uint8_t _state;
   net_engine_t *_eng;
@@ -56,12 +59,9 @@ struct sockinfo_t
   void init(sockinfo_type_t type)
   {
     esock_assert(is_closed());
+    ::bzero(this, sizeof(*this));
     _type = type;
     _state = ESOCKSTATE_CREATE;
-    _is_in_epoll = 0;
-    _on_recvable_fn = nullptr;
-    _on_sendable_fn = nullptr;
-    _arg = nullptr;
   }
 
   bool is_closed() const {

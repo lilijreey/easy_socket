@@ -153,6 +153,14 @@ class net_engine_t : detail::noncopyable_t
 
 
 
+ private: //for send again
+  template <class T> friend void __post_send(net_engine_t *eng, int sock, T *conn);
+
+  int add_sendable_ev(int sock);
+  int del_sendable_ev(int sock);
+  bool is_add_sendable_ev(int sock) const { return sockpool.get_info(sock)->_is_set_epollout; }
+
+
 
  private:
   bool _is_stop = false;

@@ -23,6 +23,9 @@ class EchoClient
   int sendDataLen=0;
   int recvPos=0;
   int _sock=-1;
+  net_engine_t *_eng{};
+  uint32_t sendCnt=0;
+
 
 public:
   ~EchoClient()
@@ -40,19 +43,23 @@ public:
        assert(sock != -1);
        printf("on connectiong fd:%d\n", sock);
        _sock = sock;
+       _eng = eng;
    }
 
    void on_conn_complete(net_engine_t *eng, int sock)
    {
      printf("on conn %s:%d ok sock:%d\n", svrIp.c_str(), svrPort, sock);
+     send_msg();
+   }
+
+   void send_msg()
+   {
      sendPos = 0;
      //send hello word\n
-     const char *msg = "hello world\n";
-     sendDataLen = strlen(msg);
-     memcpy(sendBuf, msg, sendDataLen);
-     post_send(eng, sock);
+     sendDataLen = snprintf(sendBuf, MAX_BUF, "hello world:%u\n",++sendCnt);
+     post_send(_eng, _sock);
    }
- 
+
    void on_conn_failed(net_engine_t *eng, const int err)
    {
      printf("on conn %s:%d failed reconnct %s\n", svrIp.c_str(), svrPort, strerror(err));
@@ -70,9 +77,11 @@ public:
      if (recvPos == MAX_BUF || data[datalen-1] == '\n')
      {
        ((char*)data)[recvPos]='\0';
-       printf("recv msg:%s len:%d\n", recvBuf, recvPos);
+       printf("recv msg:len:%d :%s", recvPos, recvBuf);
        recvPos = 0;
      }
+
+     send_msg();
    }
  
    void on_send_complete(net_engine_t *eng, int sock, const char *data, const ssize_t sendlen)

@@ -73,7 +73,7 @@ void sockinfo_t::close(int sock) {
   //remove from epoll
   if (_is_in_epoll) {
     _eng->epoll_del_sock(this);
-    _eng = 0;
+    _eng = nullptr;
   }
 
 
