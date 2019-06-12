@@ -154,6 +154,7 @@ int net_engine_t::epoll_add_sock(int sock,
 
   epoll_event ev;
   //ev.events = events ;// | EPOLLET;
+  //ET 模式有很多在man中没有写明的行为
   ev.events = events | EPOLLET;
   ev.data.ptr = (void*)((uintptr_t)sinfo | !sinfo->_instance);
 
@@ -211,7 +212,7 @@ int net_engine_t::process_event(std::chrono::milliseconds wait_event_ms)
     _current_fd = fd;
     _is_skip_current_event_process =false;
 
-    esock_debug_log("fd %d has ev\n", fd);
+    esock_debug_log("fd %d has ev :%s %s %s\n", fd, events & EPOLLIN ? "EPOLLIN": "", events&EPOLLOUT ? "EPOLLOUT" : "", events&EPOLLERR?"EPOLLERR":"");
 
     if (sinfo->is_closed()) {
       esock_debug_log("process sock %d event but is closed, skip", fd);

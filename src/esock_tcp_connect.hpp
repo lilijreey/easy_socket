@@ -36,7 +36,7 @@ static inline void __on_conn_recvable_helper(net_engine_t *eng,
     size_t recvlen= 0;
 
     if (buflen == 0) {
-      esock_debug_log("recv buffer is full");
+      esock_debug_log("recv buffer is full\n");
       return;
     }
 
@@ -67,13 +67,14 @@ static inline void __on_conn_recvable_helper(net_engine_t *eng,
       if (recvlen)
         self->on_recv_complete(eng, sock, buf, recvlen);
 
-      if (not eng->is_skip_current_event_process()) 
+      if (not eng->is_skip_current_event_process())
           self->on_peer_close(eng, sock);
-      return;
+      return; //ret == 0
     }
 
     esock_assert(recvlen == buflen);
     self->on_recv_complete(eng, sock, buf, recvlen);
+    esock_debug_log("readbuff full check again\n");
   } 
 
 }

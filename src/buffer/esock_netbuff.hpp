@@ -120,7 +120,11 @@ struct net_recvbuf_t// like netty channel
     {
       _wpos += len;
       assert(_wpos <= BUFSIZE);
+    }
 
+    void update_recved_data(size_t datalen)
+    {
+        increase_write_len(datalen);
     }
 };
 
@@ -415,8 +419,7 @@ struct net_fixbuff_t
    {
        //接受的数据写入get_recv_buff 返回的空间,
        assert(datalen != 0);
-       assert(_recvbuf._wpos + datalen <= _recvbuf.get_capacity());
-       _recvbuf._wpos += datalen;
+       _recvbuf.update_recved_data(datalen);
 
         while (const pkg_head_t *head = _recvbuf.peek_package_head())
         {
@@ -512,6 +515,10 @@ struct tcp_active_conn_t
  *
  * void on_peer_close(net_engine_t *eng, int sock)
  * void on_error_occur(net_engine_t *eng, int sock, int error)
+ *
+ *  pkg_head_t 类型需要实现下面函数
+ *  bool is_valid_head() const 
+ *  uint32_t get_pkg_len() const 
  *
  * }
  * </code>
