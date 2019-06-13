@@ -15,8 +15,8 @@ namespace esock {
 
 
 /**
- * tcp异步链接回调接口 OO风格, 使用CRTP实现编译期重载,避免动态重载性能损耗
- * usage.
+ * tcp异步链接回调接口 OO风格, 使用CRTP实现编译期重载,避免动态重载性能损耗.
+ * usage:
  * <code>
  * EchoClient : tcp_connect_hanndler_t<EchoClient> {
  *
@@ -42,7 +42,7 @@ namespace esock {
 template <class subclass_t>
 struct async_tcp_connect_hanndler_t
 {
-  //subclass_t need implete these two func
+  //subclass_t need implete these func
   //void on_conn_connecting(net_engine_t *eng, int sock);
   //void on_conn_complete(net_engine_t *eng, int sock);
   //void on_conn_failed(net_engine_t *eng, const int err);

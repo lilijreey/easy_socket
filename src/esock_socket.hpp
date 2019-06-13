@@ -13,6 +13,7 @@
 
 #include <utility>
 #include <string>
+#include <strings.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/socket.h>
@@ -22,6 +23,16 @@
 
 namespace esock {
 
+/**
+ * @return false means invaild ip.
+ */
+bool init_sockaddr_in(sockaddr_in &addr, const std::string &ip, uint16_t port)
+{
+    ::bzero(&addr, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(port);
+    return 1 == inet_pton(AF_INET, ip.c_str(), &(addr.sin_addr.s_addr));
+}
 
 static inline int set_sock_nonblocking(int sock) {
     int flags = fcntl(sock, F_GETFL, 0);

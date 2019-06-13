@@ -95,7 +95,7 @@ class sockpool_t : detail::noncopyable_t
   friend class net_engine_t;
 
  private:
-  int _ref=0;
+  volatile int _ref=0;
   
 };
 

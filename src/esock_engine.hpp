@@ -15,7 +15,7 @@
 #include <sys/epoll.h>
 
 #include "esock_socket.hpp"
-#include "esock_error.hpp"
+#include "detail/esock_error.hpp"
 #include "detail/esock_utility.hpp"
 #include "esock_tcp_listener.hpp"
 
