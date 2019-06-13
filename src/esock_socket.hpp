@@ -26,7 +26,7 @@ namespace esock {
 /**
  * @return false means invaild ip.
  */
-bool init_sockaddr_in(sockaddr_in &addr, const std::string &ip, uint16_t port)
+static inline bool init_sockaddr_in(sockaddr_in &addr, const std::string &ip, uint16_t port)
 {
     ::bzero(&addr, sizeof(addr));
     addr.sin_family = AF_INET;
