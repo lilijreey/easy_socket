@@ -51,7 +51,11 @@ struct net_recvbuf_t// like netty channel
     {
         assert(BUFSIZE >= _wpos);
         return BUFSIZE - _wpos;
-        return 0;
+    }
+
+    bool is_full() const
+    {
+        return 0 == get_writable_len();
     }
 
     //消费数据,不检验参数，请保证参数有效
@@ -414,7 +418,7 @@ struct net_fixbuff_t
    void on_recv_complete(net_engine_t *eng, int sock, const char *data, const size_t datalen)
    {
        //接受的数据写入get_recv_buff 返回的空间,
-       assert(datalen != 0);
+       //dataLen有可能是0应用层buff已满无法接受,但是还是要通知应用层消费他的数据
        assert(_recvbuf._wpos + datalen <= _recvbuf.get_capacity());
        _recvbuf._wpos += datalen;
 
@@ -422,13 +426,18 @@ struct net_fixbuff_t
         {
             if (not head->is_valid_head())
             {
-                //TODO 只检查一次
                 static_cast<subclass_t*>(this)->on_recv_pkg_invalid(eng, sock, head);
                 return;
             }
 
             if (not _recvbuf.is_complete_pkg(head->get_pkg_len()))
+            {
+                if (_recvbuf.is_full()) { //出现这种情况时代表有BUG发生
+                    esock_report_error_msg("sock %d buff is full but pkg not complete should not occu this", sock);
+                    static_cast<subclass_t*>(this)->on_recv_pkg_invalid(eng, sock, head);
+                }
                 return;
+            }
 
             _recvbuf.read_package(head->get_pkg_len()); //XXX 省略掉参数
 
@@ -474,9 +483,9 @@ struct net_fixbuff_t
  * class BinClient : public tcp_active_conn_t<BinClient, pkg_head_t, _4K>  {
  * //需要实现如需函数
  * //connect callback
- * void on_conn_connecting(net_engine_t *eng, const char *ip, const uint16_t port, int sock)
- * void on_conn_complete(net_engine_t *eng, const char *ip, const uint16_t port, int sock)
- * void on_conn_failed(net_engine_t *eng, const char *ip, const uint16_t port, const int err)
+ * void on_conn_connecting(net_engine_t *eng,  int sock)
+ * void on_conn_complete(net_engine_t *eng, int sock)
+ * void on_conn_failed(net_engine_t *eng, const int err)
  *
  * 
  * //当发现一个无效包时回调，应该关闭sock,如果不关闭行为未定义
