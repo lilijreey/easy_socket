@@ -78,19 +78,15 @@ void net_engine_t::async_tcp_connect(const std::string &ip,
   int sock=-1;
   sockinfo_t *sinfo = nullptr;
   sockaddr_in addr;
-  bzero(&addr, sizeof(addr));
-  addr.sin_family = AF_INET;
-  addr.sin_port = htons(port);
-  if (1 != inet_pton(AF_INET, ip.c_str(), &(addr.sin_addr.s_addr)))
-  {
-    esock_set_syserr_msg("an invalid ip %s", ip.c_str());
+
+  if (not init_sockaddr_in(addr, ip, port)) {
+    esock_report_error_msg("an invalid ip %s", ip.c_str());
     goto error;
   }
 
-
   sock = socket(AF_INET, SOCK_STREAM, 0);
   if (-1 == sock) {
-    esock_set_syserr_msg("create socket failed %d ",3);
+    esock_report_syserr_msg("create socket failed %d ",3);
     goto error;
   }
 
@@ -99,7 +95,7 @@ void net_engine_t::async_tcp_connect(const std::string &ip,
   sinfo->init(ESOCKTYPE_TCP_CONNECT); //TODO init 和socket内聚到一个函数中
 
   if (-1 == set_sock_nonblocking(sock)) {
-    esock_set_syserr_msg("set socket %d nonblock failed", sock);
+    esock_report_syserr_msg("set socket %d nonblock failed", sock);
     goto error;
   }
 
@@ -109,15 +105,16 @@ void net_engine_t::async_tcp_connect(const std::string &ip,
       if (-1 == epoll_add_sock(sock, EPOLLOUT, 
                                (void*)on_conn_failed_fn,
                                (void*)on_conn_complete_fn,
-                               user_arg))
+                               user_arg)) {
         goto error;
+      }
 
       //not real failed
       on_conn_failed_fn(this, sock, EINPROGRESS, user_arg);
       return ;
     }
 
-    esock_set_syserr_msg("connect failed fd:%d", sock);
+    esock_report_syserr_msg("connect failed fd:%d", sock);
     goto error;
   }
 
@@ -140,13 +137,13 @@ int net_engine_t::epoll_add_sock(int sock,
 {
   sockinfo_t *sinfo = sockpool.get_info(sock);
   if (sinfo->is_closed()) {
-    esock_set_error_msg("sock %d is closed", sock);
+    esock_report_error_msg("sock %d is closed", sock);
     errno = EINVAL;
     return -1;
   }
 
   if (sinfo->_eng == this && sinfo->_is_in_epoll) {
-    esock_set_error_msg("sock %d already add to eng", sock);
+    esock_report_error_msg("sock %d already add to eng", sock);
     errno = EEXIST;
     return -1;
   }
@@ -159,7 +156,7 @@ int net_engine_t::epoll_add_sock(int sock,
   int ret = epoll_ctl(_efd, EPOLL_CTL_ADD, sock, &ev);
   if (ret == -1)
   {
-    esock_set_syserr_msg("epoll_ctl add fd %d failed", sock);
+    esock_report_syserr_msg("epoll_ctl add fd %d failed", sock);
     return -1;
   };
 
@@ -188,7 +185,7 @@ int net_engine_t::process_event(std::chrono::milliseconds wait_event_ms)
   const int ev_cnt = epoll_wait(_efd, _events, MAX_EVENT_SIZE, wait_event_ms.count());
   if (ev_cnt == -1)
   {
-    esock_set_syserr_msg("epoll_wait fd:%d failed", _efd);
+    esock_report_syserr_msg("epoll_wait fd:%d failed", _efd);
     if (errno == EINTR)
       return 0;
     return -1;
@@ -305,7 +302,7 @@ void net_engine_t::epoll_del_sock(sockinfo_t *sinfo)
 
   epoll_event _ev;//2.6.9 before need
   if (-1 == epoll_ctl(_efd, EPOLL_CTL_DEL, fd, &_ev))
-    esock_set_syserr_msg("epoll_ctl del fd %d failed\n", fd);
+    esock_report_syserr_msg("epoll_ctl del fd %d failed\n", fd);
 
   sinfo->_is_in_epoll = 0;
   sinfo->_is_set_epollin = 0;
@@ -328,7 +325,7 @@ int close_socket(int fd)
 {
   sockinfo_t *sinfo = sockpool.get_info(fd);
   if (sinfo == nullptr) {
-    esock_set_error_msg("a invilded fd %d", fd);
+    esock_report_error_msg("a invilded fd %d", fd);
     return -1;
   }
   sinfo->close(fd);
@@ -339,7 +336,7 @@ int net_engine_t::close_socket(int fd)
 {
   sockinfo_t *sinfo = sockpool.get_info(fd);
   if (sinfo == nullptr) {
-    esock_set_error_msg("a invilded fd %d", fd);
+    esock_report_error_msg("a invilded fd %d", fd);
     return -1;
   }
   sinfo->close(fd);
@@ -353,7 +350,7 @@ int net_engine_t::add_tcp_listener(tcp_listener_t *listener,
   const int listen_fd = listener->get_sock();
   if (listen_fd == -1)
   {
-    esock_set_syserr_msg("listener not open");
+    esock_report_syserr_msg("listener not open");
     return -EINVAL;
   }
 
@@ -363,7 +360,7 @@ int net_engine_t::add_tcp_listener(tcp_listener_t *listener,
 
   if (sinfo->_eng != nullptr)
   {
-    esock_set_error_msg("alreay add engine");
+    esock_report_error_msg("alreay add engine");
     return -EINVAL;
   }
 
@@ -395,7 +392,7 @@ int net_engine_t::add_sendable_ev(int sock)
   int ret = epoll_ctl(_efd, EPOLL_CTL_MOD, sock, &ev);
   if (ret == -1)
   {
-    esock_set_syserr_msg("epoll_ctl_mod fd %d failed", sock);
+    esock_report_syserr_msg("epoll_ctl_mod fd %d failed", sock);
     return -1;
   };
 
@@ -421,7 +418,7 @@ int net_engine_t::del_sendable_ev(int sock)
   int ret = epoll_ctl(_efd, EPOLL_CTL_MOD, sock, &ev);
   if (ret == -1)
   {
-    esock_set_syserr_msg("epoll_ctl_mod fd %d failed", sock);
+    esock_report_syserr_msg("epoll_ctl_mod fd %d failed", sock);
     return -1;
   };
 

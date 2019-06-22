@@ -124,12 +124,21 @@ public:
 };
 
 
+void handle_esock_error_msg(const char *msg)
+{
+    printf("%s\n", msg);
+}
+
 int main()
 {
+
+ esock::set_error_report_fn(handle_esock_error_msg);
+  
+    
   EchoClient *client = new EchoClient;
 
   net_engine_t *eng = esock::make_net_engine();
-  eng->async_tcp_client("127.0.0.1", 5566, client);
+  eng->async_tcp_client("127.0.0", 5566, client);
   //printf("delete client\n");
   //delete client;
 

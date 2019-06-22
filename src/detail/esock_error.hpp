@@ -13,20 +13,32 @@
 
 namespace esock { 
 
+using handle_esock_error_report_fn_t = void (*)(const char* error_msg);
+
+
 namespace detail {
 
-extern thread_local int  error;
-extern thread_local char error_msg[1024];
-
-#define esock_set_error_msg(fmt, ...) \
-   snprintf(detail::error_msg, 1024, "%s:%d [%s] " fmt, __FILE__, __LINE__, __func__, ##__VA_ARGS__);
-#define esock_set_syserr_msg(fmt, ...) \
-   snprintf(detail::error_msg, 1024, "%s:%d [%s] (syserr:%s) " fmt , __FILE__, __LINE__, __func__, strerror(errno), ##__VA_ARGS__)
+extern handle_esock_error_report_fn_t error_report_fn;
 
 }
 
-inline int get_errno() {return detail::error;}
-inline const char* get_error_msg() {return detail::error_msg;}
+} //end namespace eosck
+
+#define esock_report_error_msg(fmt, ...) \
+    do { \
+        if (esock::detail::error_report_fn) { \
+            char __esock_error_msg[256]; \
+            snprintf(__esock_error_msg, 256, "%s:%d [%s] " fmt, __FILE__, __LINE__, __func__, ##__VA_ARGS__); \
+            esock::detail::error_report_fn(__esock_error_msg); \
+        } \
+    }while(0)
 
 
-}
+#define esock_report_syserr_msg(fmt, ...) \
+    do { \
+        if (esock::detail::error_report_fn) { \
+            char __esock_error_msg[256]; \
+            snprintf(__esock_error_msg, 256, "%s:%d [%s] (syserr:%s) " fmt, __FILE__, __LINE__, __func__, strerror(errno), ##__VA_ARGS__); \
+            esock::detail::error_report_fn(__esock_error_msg); \
+        } \
+    }while(0)

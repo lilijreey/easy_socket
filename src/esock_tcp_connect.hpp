@@ -37,6 +37,7 @@ static inline void __on_conn_recvable_helper(net_engine_t *eng,
 
     if (buflen == 0) {
       esock_debug_log("recv buffer is full");
+      self->on_recv_complete(eng, sock, buf, 0); //通知上层处理数据
       return;
     }
 
@@ -44,9 +45,7 @@ static inline void __on_conn_recvable_helper(net_engine_t *eng,
       ssize_t ret = ::recv(sock, buf+recvlen, buflen-recvlen, 0);
       if (ret == -1) {
         switch (errno) {
-        case EINTR:
-          continue;
-
+        case EINTR: continue;
         case EAGAIN:
           if (recvlen)
             self->on_recv_complete(eng, sock, buf, recvlen);
@@ -103,15 +102,14 @@ void __post_send(net_engine_t *eng, int sock, T *conn)
     ssize_t ret = ::send(sock, data + sendlen, datalen -sendlen, MSG_NOSIGNAL);
     if (ret == -1) {
       switch (errno) {
-      case EINTR: 
-        continue;
+      case EINTR: continue;
       case EAGAIN:
         if (-1 == eng->add_sendable_ev(sock))
         {
           conn->on_error_occur(eng, sock, errno);
           return;
         }
-        break;
+        goto out;
       default:
         conn->on_error_occur(eng, sock, errno);
         return;
@@ -121,6 +119,7 @@ void __post_send(net_engine_t *eng, int sock, T *conn)
     sendlen += ret;
   }
 
+out:
   if (sendlen != 0)
     conn->on_send_complete(eng, sock, data, sendlen);
 }
