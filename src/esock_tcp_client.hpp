@@ -14,35 +14,30 @@
 namespace esock {
 
 
-/**
- * tcp异步链接回调接口 OO风格, 使用CRTP实现编译期重载,避免动态重载性能损耗
- * usage.
- * <code>
- * EchoClient : tcp_connect_hanndler_t<EchoClient> {
- *
- * //连接中,一般用来记录socket,用于取消连接,如果直接链接成功或者其他错误则不会调用该函数
- * void on_conn_connecting(net_engine_t *eng, int sock)
- * { 
- *   //cancle connect
- *   eng->close_socket(sock);
- * }
- *
- *
- *  void on_conn_complete(net_engine_t *eng, int sock) {
- *    send(sock, "hello", 6);
- *    //... code
- *  }
- *  void on_conn_failed(net_engine_t *eng, const int err) {
- *    //... code
- *  }
- * }
- * </code>
- *
- */
 template <class subclass_t>
 struct async_tcp_connect_hanndler_t
 {
-  //subclass_t need implete these two func
+/** 
+ * @brief: 抽象tcp connect 回调接口.
+ * OO风格, 使用CRTP实现编译期重载,避免动态重载性能损耗
+ * 
+ * @callback: 需要实现的回调函数
+ *
+ * //connect 返回EPROGRESS  时回调
+ * void on_conn_connecting(net_engine_t *eng, int sock);
+ *
+ * //connect 返回成功调用，或EPROGRESS 链接成功后调用
+ * void on_conn_complete(net_engine_t *eng, int sock);
+ *
+ * //connect 失败后,或者EPROGRESS失败后调用
+ * void on_conn_failed(net_engine_t *eng, const int err);
+ * 
+ * @usage:
+ *   see examples/tcp
+ *
+ */
+
+  //subclass_t need implement this func
   //void on_conn_connecting(net_engine_t *eng, int sock);
   //void on_conn_complete(net_engine_t *eng, int sock);
   //void on_conn_failed(net_engine_t *eng, const int err);
@@ -52,6 +47,7 @@ struct async_tcp_connect_hanndler_t
                                              void *arg)
   {
 
+    static_assert(subclass_t::on_conn_complete, "need implement on_conn_complete()");
     static_cast<subclass_t*>(arg)->on_conn_complete(eng, sock);
   }
 

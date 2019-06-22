@@ -8,7 +8,7 @@
  */
 #include <arpa/inet.h>
 #include <strings.h>
-#include "esock_error.hpp"
+#include "detail/esock_error.hpp"
 #include "esock_tcp_listener.hpp"
 
 namespace esock {

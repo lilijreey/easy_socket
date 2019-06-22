@@ -1,5 +1,6 @@
 /**
  * @file  
+ * @brife   An global buffer to store all socket fd information.
  *
  */
 
@@ -27,10 +28,9 @@ enum sockinfo_state_t {
 };
 
 
-//所有esock函数返回的socket，必须调用该函数进行关闭
-int close_socket(int sock);
-
 class net_engine_t;
+
+//store a oepn socket info
 struct sockinfo_t
 {
   uint8_t _instance:1; 
@@ -54,8 +54,6 @@ struct sockinfo_t
   void *_arg;
 
  public:
-  void close(int sock);
-
   void init(sockinfo_type_t type)
   {
     esock_assert(is_closed());
@@ -64,17 +62,18 @@ struct sockinfo_t
     _state = ESOCKSTATE_CREATE;
   }
 
-  bool is_closed() const {
-    return _state == ESOCKSTATE_CLOSED;
-  }
+  void close(int sock);
+
+  bool is_closed() const { return _state == ESOCKSTATE_CLOSED; }
 
   int get_fd() const;
+
 };
 
 
+// sockinfo_t pool
 class sockpool_t : detail::noncopyable_t
 {
-
  private:
   int init();
   void uninit();
@@ -95,12 +94,12 @@ class sockpool_t : detail::noncopyable_t
   friend class net_engine_t;
 
  private:
-  int _ref=0;
-  
+  volatile int _ref=0; //XXX need atomic type
 };
 
 extern sockpool_t sockpool; //gloabl varibale
 
+//所有esock函数返回的socket，必须调用该函数进行关闭
 //static inline void close_socket(int fd) { sockpool.get_info(fd)->close(fd); }
 
 } //namespace

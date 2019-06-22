@@ -4,7 +4,7 @@ CXXFLAGS=-Wall -std=c++0x -O0 -g -ggdb
 
 all: libesock.a
 
-libesock.a : esock_engine.o esock_tcp_listener.o detail/esock_sockpool.o
+libesock.a : esock_engine.o esock_tcp_listener.o detail/esock_sockpool.o detail/esock_error.o
 	ar crv $@ $^
 
 clean:
