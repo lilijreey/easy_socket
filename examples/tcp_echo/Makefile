@@ -2,12 +2,14 @@ CXXFLAGS=-Wall -O0 -g -std=c++11 -isystem ../../src
 #LDFLAGS=-L../../src 
 LIBS=../../src/libesock.a 
 
-all: echo_client echo_server
+all: cc xx
 
-echo_client: echo_client.o
+#echo_client: echo_client.o
+cc: cc.o
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ -o $@ $(LIBS)
 
-echo_server: echo_server.o
+#echo_server: echo_server.o
+xx: xx.o
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ -o $@ $(LIBS)
 
 clean:

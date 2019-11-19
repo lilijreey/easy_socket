@@ -70,7 +70,17 @@ struct net_fixbuff_op_t
     //自动实现
     std::pair<const char *, ssize_t> get_send_data ()
     {
+<<<<<<< HEAD
         return { self->_sendbuf.get_sendable_data (), self->_sendbuf.get_sendable_len () };
+=======
+      _wpos += len;
+      assert(_wpos <= BUFSIZE);
+    }
+
+    void update_recved_data(size_t datalen)
+    {
+        increase_write_len(datalen);
+>>>>>>> 0cc55b20ffef6473b8410c1899d2558dabfe174c
     }
 
     //自动实现
@@ -97,6 +107,70 @@ struct net_rawbuf_t
     net_send_rawbuf_t<pkg_head_t, SENDBUF_SIZE> _sendbuf;
 };
 
+<<<<<<< HEAD
+=======
+   //返回能给个写入的长度
+   std::pair<char*, size_t> get_recv_buff() 
+   {
+       _recvbuf.discard_readed_data();
+
+       //如果buffsize 大于最大单个包长则不存full的情况
+
+       return {
+           _recvbuf.get_writable_buff(),
+           _recvbuf.get_writable_len()
+       };
+   }
+
+   void on_recv_complete(net_engine_t *eng, int sock, const char *data, const size_t datalen)
+   {
+       //接受的数据写入get_recv_buff 返回的空间,
+       assert(datalen != 0);
+       _recvbuf.update_recved_data(datalen);
+
+        while (const pkg_head_t *head = _recvbuf.peek_package_head())
+        {
+            if (not head->is_valid_head())
+            {
+                //TODO 只检查一次
+                static_cast<subclass_t*>(this)->on_recv_pkg_invalid(eng, sock, head);
+                return;
+            }
+
+            if (not _recvbuf.is_complete_pkg(head->get_pkg_len()))
+                return;
+
+            _recvbuf.read_package(head->get_pkg_len()); //XXX 省略掉参数
+
+            static_cast<subclass_t*>(this)->on_recv_pkg_complete(eng, sock, head, head->get_pkg_len()- sizeof(pkg_head_t));
+
+            if (eng->is_skip_current_event_process())
+                return;
+        }
+   }
+
+   //返回需要发送的数据
+   //自动实现
+   std::pair<const char*, ssize_t> get_send_data()
+   {
+     return {
+       _sendbuf.get_sendable_data(), _sendbuf.get_sendable_len()
+     };
+   }
+ 
+   //自动实现
+   void on_send_complete(net_engine_t *eng, int sock, const char *data, const ssize_t sendlen)
+   {
+     _sendbuf.update_sended_data(sendlen);
+
+    //已发送数据超过buf长度的1/4后调整
+    if (_sendbuf._rpos>= (SENDBUF_SIZE>>2))
+        _sendbuf.discard_sended_data();
+
+    if (_sendbuf.get_sendable_len() != 0)
+        static_cast<subclass_t*>(this)->post_send(eng, sock);
+   }
+>>>>>>> 0cc55b20ffef6473b8410c1899d2558dabfe174c
 
 //template <typename pkg_head_t, size_t BUFSIZE, size_t PKG_HEAD_LEN=sizeof(pkg_head_t)>
 //struct net_ringbuff_t
@@ -163,6 +237,10 @@ struct tcp_active_conn_with_ring_buff_t
  *
  * void on_peer_close(net_engine_t *eng, int sock)
  * void on_error_occur(net_engine_t *eng, int sock, int error)
+ *
+ *  pkg_head_t 类型需要实现下面函数
+ *  bool is_valid_head() const 
+ *  uint32_t get_pkg_len() const 
  *
  * }
  * </code>
