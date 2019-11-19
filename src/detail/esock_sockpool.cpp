@@ -1,99 +1,92 @@
 /**
  * @file     sock_pool.cpp
- *           
+ *
  *
  * @author   lili  <lilijreey@gmail.com>
  * @date     12/17/2018 11:36:39 PM
  *
  */
-#include <unistd.h>
-#include <cstdlib>
 #include "esock_sockpool.hpp"
 #include "../esock_engine.hpp"
+#include <cstdlib>
+#include <unistd.h>
 
-namespace esock { 
-
-
-//extern __thread int last_errno;
-//__thread char error_msg[4096];
+namespace esock
+{
 
 sockpool_t sockpool;
 
-int sockinfo_t::get_fd() const {return this - sockpool._socks;}
+int sockinfo_t::get_fd () const { return this - sockpool._socks; }
 
-int sockpool_t::init() {
-  if (_ref != 0)
-  {
-    ++_ref;
-    return 0;
-  }
-
-  long open_max = sysconf(_SC_OPEN_MAX);
-  if (open_max == -1)
-    return -1;
-
-  _socks = (sockinfo_t*)calloc(sizeof(sockinfo_t), open_max);
-  if (_socks == nullptr)
-    return -1;
-
-  _size = open_max;
-  _ref = 1;
-  return 0;
-}
-
-void sockpool_t::uninit()
+int sockpool_t::init ()
 {
-  esock_assert(_ref > 0);
-  if (--_ref == 0)
-  {
-      esock_debug_log("free sockpool");
-    free(_socks);
-    _socks = 0;
-    _size = 0;
-  }
-}
-
-
-void sockpool_t::clear_epoll_pointer(const net_engine_t *eng)
-{
-    for (int i=0; i < _size; ++i)
+    if (_ref != 0)
     {
-        if (_socks[i]._eng == eng) {
+        ++_ref;
+        return 0;
+    }
+
+    long open_max = sysconf (_SC_OPEN_MAX);
+    if (open_max == -1) return -1;
+
+    _socks = (sockinfo_t *)calloc (sizeof (sockinfo_t), open_max);
+    if (_socks == nullptr) return -1;
+
+    _size = open_max;
+    _ref = 1;
+    return 0;
+}
+
+void sockpool_t::uninit ()
+{
+    esock_assert (_ref > 0);
+    if (--_ref == 0)
+    {
+        esock_debug_log ("free sockpool");
+        free (_socks);
+        _socks = 0;
+        _size = 0;
+    }
+}
+
+void sockpool_t::clear_epoll_pointer (const net_engine_t *eng)
+{
+    for (int i = 0; i < _size; ++i)
+    {
+        if (_socks[i]._eng == eng)
+        {
             _socks[i]._is_in_epoll = false;
             _socks[i]._eng = nullptr;
         }
     }
 }
 
-void sockinfo_t::close(int sock) {
-  esock_assert(sock > 0);
-  esock_assert(sock == get_fd());
-  if (is_closed()) return;
+void sockinfo_t::close (int sock)
+{
+    esock_assert (sock > 0);
+    esock_assert (sock == get_fd ());
+    if (is_closed ()) return;
 
-  //remove from epoll
-  if (_is_in_epoll) {
-    _eng->epoll_del_sock(this);
-    _eng = nullptr;
-  }
+    // remove from epoll
+    if (_is_in_epoll)
+    {
+        _eng->epoll_del_sock (this);
+        _eng = nullptr;
+    }
 
+    errno = 0;
+    while (::close (sock) == -1 && errno == EINTR)
+    {
+        ;
+    }
+    if (errno != 0) esock_debug_log ("close fd:%d failed:%s\n", sock, strerror (errno));
 
-  errno = 0;
-  while (::close(sock) == -1 && errno == EINTR) {
-    ;
-  }
-  if (errno != 0)
-    esock_debug_log("close fd:%d failed:%s\n", sock, strerror(errno));
+    _type = ESOCKTYPE_NONE;
+    _state = ESOCKSTATE_CLOSED;
+    _on_recvable_fn = 0;
+    _on_sendable_fn = 0;
+    _arg = 0;
 
-  _type = ESOCKTYPE_NONE;
-  _state = ESOCKSTATE_CLOSED;
-  _on_recvable_fn = 0;
-  _on_sendable_fn = 0;
-  _arg = 0;
-
-  esock_debug_log("fd %d closed\n", sock);
+    esock_debug_log ("fd %d closed\n", sock);
 }
-
-
 }
-
-

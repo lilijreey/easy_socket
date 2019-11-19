@@ -17,12 +17,16 @@ using esock::net_engine_t;
 
 
 class BinClient 
-  : public esock::tcp_active_conn_t<BinClient, proto_head_t, 4 <<10>
+  : public esock::tcp_active_conn_t<BinClient, esock::netbuff<proto_head_t>>
 {
  private:
   int _sock=-1;
   int _count;
   std::vector<int64_t> _results;
+
+  BinClient()
+      :esock::tcp_active_conn_t<BinClient, proto_head_t>(4,10)
+  {}
 
 public:
   ~BinClient()

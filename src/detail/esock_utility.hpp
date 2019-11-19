@@ -1,6 +1,6 @@
 /**
  * @file     esock_utility.hpp
- *           
+ *
  *
  * @author   lili <lilijreey@gmail.com>
  * @date     01/05/2019 01:32:36 PM
@@ -9,26 +9,39 @@
 
 #pragma once
 
-#include <cassert>
-#include <cstdint>
-#include <errno.h>
-    
-namespace esock { namespace detail {
+#include "esock_sysinclude_fs.hpp"
 
-//#define esock_debug_log(fmt, ...) printf("%s:%d " fmt , __FILE__, __LINE__, ##__VA_ARGS__)
-#define esock_debug_log(fmt, ...) 
+namespace esock
+{
 
+/* align addr on a size boundary - adjust address up/down if needed */
+// TODO test
+template <typename T> inline constexpr T align_up (T size, long align_size) noexcept
+{
+    static_assert (std::is_integral<T>::value, "T type error");
+    return ((size + align_size) & ~align_size);
+}
 
-#define esock_assert(exp) assert(exp)
+template <typename T> inline constexpr T align_down (T size, long align_size) noexcept
+{
+    static_assert (std::is_integral<T>::value, "T type error");
+    return size & ~(T) (align_size - 1);
+}
 
-class noncopyable_t {
+namespace detail
+{
 
-protected:
-	noncopyable_t() {}
-	~noncopyable_t() {}
-private:
-	noncopyable_t( const noncopyable_t& );
-	const noncopyable_t& operator = ( const noncopyable_t& );
+class noncopyable_t
+{
+    protected:
+    noncopyable_t () {}
+    ~noncopyable_t () {}
+
+    private:
+    noncopyable_t (const noncopyable_t &);
+    const noncopyable_t &operator= (const noncopyable_t &);
 };
 
-}} //nemespace
+} // namespace detail
+
+} // nemespace

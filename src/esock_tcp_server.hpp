@@ -1,6 +1,6 @@
 /**
  * @file     esock_tcp_server.hpp
- *           
+ *
  *
  * @author   lili <lilijreey@gmail.com>
  * @date     01/05/2019 03:21:33 PM
@@ -9,12 +9,11 @@
 
 #pragma once
 
-#include <string>
-#include <new>
-
+#include "detail/esock_sysinclude_fs.hpp"
 #include "esock_engine.hpp"
 
-namespace esock {
+namespace esock
+{
 
 /**
  * tcp_server_conn 回调接口, 处理发起链接到读写数据功能.
@@ -25,10 +24,12 @@ namespace esock {
  *  //实现下面几个回调函数
  *
  *  如果在该回调中调用close_socket，则不会进行下面的调用
- *  void on_recv_complete(net_engine_t *eng, int sock, const char *data, const size_t datalen);
+ *  void on_recv_complete(net_engine_t *eng, int sock, const char *data, const
+ * size_t datalen);
  *
  *   发送完成数据是通知,一般用来更新buff
- *  void on_send_complete(net_engine_t *eng, int sock, const char *data, const size_t sendlen);
+ *  void on_send_complete(net_engine_t *eng, int sock, const char *data, const
+ * size_t sendlen);
  *
  *  void on_peer_close(net_engine_t *eng, int sock);
  *
@@ -47,42 +48,33 @@ namespace esock {
  *
  */
 
-template <class subclass_t>
-struct tcp_server_conn_handler_t
+template <class subclass_t> struct tcp_server_conn_handler_t
 {
+    static inline void on_conn_recvable_helper (net_engine_t *eng, int sock, int event, void *arg)
+    {
+        esock_debug_log ("on_conn_recvable\n");
+        __on_conn_recvable_helper (eng, sock, event, static_cast<subclass_t *> (arg));
+    }
 
-  static inline void on_conn_recvable_helper(net_engine_t *eng,
-                                             int sock, 
-                                             int event,
-                                             void *arg)
-  {
-    esock_debug_log("on_conn_recvable\n");
-    __on_conn_recvable_helper(eng, sock, event, static_cast<subclass_t*>(arg));
-  }
+    static inline void on_conn_sendable_helper (net_engine_t *eng, int sock, int event, void *arg)
 
-  static inline void on_conn_sendable_helper(net_engine_t *eng,
-                                             int sock, 
-                                             int event,
-                                             void *arg)
-  
-  {
-    //发送待发送数据
-    subclass_t *self = static_cast<subclass_t*>(arg);
-    esock_debug_log("fd:%d on_sendable\n", sock);
-    self->post_send(eng, sock);
-  }
+    {
+        //发送待发送数据
+        subclass_t *self = static_cast<subclass_t *> (arg);
+        esock_debug_log ("fd:%d on_sendable\n", sock);
+        self->post_send (eng, sock);
+    }
 
-  //发送数据
-  void post_send(net_engine_t *eng, int sock)
-  {
-      __post_send(eng, sock, static_cast<subclass_t*>(this));
-  }
+    //发送数据
+    void post_send (net_engine_t *eng, int sock)
+    {
+        __post_send (eng, sock, static_cast<subclass_t *> (this));
+    }
 
-  void post_send(int sock)
-  {
-      __post_send(sockpool.get_info(sock)->_eng, sock, static_cast<subclass_t*>(this));
-  }
-
+    void post_send (int sock)
+    {
+        __post_send (sockpool.get_info (sock)->_eng, sock, static_cast<subclass_t *> (this));
+    }
 };
 
 /**
@@ -98,7 +90,8 @@ struct tcp_server_conn_handler_t
  *  如果在on_accept_complete中调用close_socket关闭了链接则必须返回nullptr
  *  返回的连接对象，析构时必须关闭socket,如果需要转移socket和对象的所有关系
  *  可以调用eng->swap_socket(fd, otherConn)
- *  tcp_server_conn_t *on_accept_complete(net_engine_t *eng, tcp_listener_t *ins, int conn, sockaddr_storage addr);
+ *  tcp_server_conn_t *on_accept_complete(net_engine_t *eng, tcp_listener_t
+ * *ins, int conn, sockaddr_storage addr);
  *
  *  accept 返回失败是调用
  *  void on_accept_failed(net_engine_t *eng, tcp_listener_t *ins, int error);
@@ -106,51 +99,55 @@ struct tcp_server_conn_handler_t
  *
  */
 
-template <class subclass_t, class tcp_server_conn_t>
-struct tcp_server_accept_handler_t
+template <class subclass_t, class tcp_server_conn_t> struct tcp_server_accept_handler_t
 {
-  //tcp_server_conn_t *on_accept_complete(net_engine_t *eng, tcp_listener_t *ins, int conn, sockaddr_storage addr);
-  //void on_accept_failed(net_engine_t *eng, tcp_listener_t *ins, int error);
+    // tcp_server_conn_t *on_accept_complete(net_engine_t *eng, tcp_listener_t
+    // *ins, int conn, sockaddr_storage addr);
+    // void on_accept_failed(net_engine_t *eng, tcp_listener_t *ins, int error);
 
-  static void on_tcp_acceptable(net_engine_t *eng, tcp_listener_t *ins, int listen_fd, void *arg)
-  {
-    sockaddr_storage addr;
-    socklen_t addrlen = sizeof(addr);
-    while (true)
+    static void on_tcp_acceptable (net_engine_t *eng, tcp_listener_t *ins, int listen_fd, void *arg)
     {
-      int ret = ::accept4(listen_fd, (sockaddr*)&addr, &addrlen, SOCK_NONBLOCK);
-      if (-1 == ret)
-      {
-        switch (errno) {
-        case EAGAIN: return;
-        case EINTR: continue;
-        default: static_cast<subclass_t*>(arg)->on_accept_failed(eng, ins, errno);
+        sockaddr_storage addr;
+        socklen_t addrlen = sizeof (addr);
+        while (true)
+        {
+            int ret = ::accept4 (listen_fd, (sockaddr *)&addr, &addrlen, SOCK_NONBLOCK);
+            if (-1 == ret)
+            {
+                switch (errno)
+                {
+                case EAGAIN:
+                    return;
+                case EINTR:
+                    continue;
+                default:
+                    static_cast<subclass_t *> (arg)->on_accept_failed (eng, ins, errno);
+                }
+                return;
+            }
+
+            esock_debug_log ("accept new fd:%d", ret);
+            sockinfo_t *sinfo = sockpool.get_info (ret);
+            sinfo->init (ESOCKTYPE_TCP_CONNECT);
+
+            if (-1 ==
+                eng->epoll_add_sock (ret, EPOLLIN, (void *)tcp_server_conn_t::on_conn_recvable_helper,
+                                     (void *)tcp_server_conn_t::on_conn_sendable_helper,
+                                     nullptr)) //调用on_tcp_acceptable 成功后设置obj
+            {
+                static_cast<subclass_t *> (arg)->on_accept_failed (eng, ins, errno);
+                eng->close_socket (ret);
+                return;
+            }
+
+            tcp_server_conn_t *conn =
+            static_cast<subclass_t *> (arg)->on_accept_complete (eng, ins, ret, addr);
+            if (conn == nullptr)
+                eng->close_socket (ret);
+            else
+                sinfo->_arg = conn;
         }
-        return;
-      }
-
-      esock_debug_log("accept new fd:%d", ret);
-      sockinfo_t *sinfo = sockpool.get_info(ret);
-      sinfo->init(ESOCKTYPE_TCP_CONNECT);
-
-      if (-1 == eng->epoll_add_sock(ret, EPOLLIN,
-                                    (void*)tcp_server_conn_t::on_conn_recvable_helper,
-                                    (void*)tcp_server_conn_t::on_conn_sendable_helper,
-                                    nullptr)) //调用on_tcp_acceptable 成功后设置obj
-      {
-        static_cast<subclass_t*>(arg)->on_accept_failed(eng, ins, errno);
-        eng->close_socket(ret);
-        return;
-      }
-
-      tcp_server_conn_t *conn = static_cast<subclass_t*>(arg)->on_accept_complete(eng, ins, ret, addr);
-      if (conn == nullptr)
-        eng->close_socket(ret);
-      else
-        sinfo->_arg = conn;
     }
-  }
-
 };
 
-} //end namespace
+} // end namespace
