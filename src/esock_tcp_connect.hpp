@@ -19,22 +19,6 @@ namespace esock
 template <class T>
 static inline void __on_conn_recvable_helper (net_engine_t *eng, int sock, int event, T *self)
 {
-<<<<<<< HEAD
-    esock_debug_log ("on_conn_recvable\n");
-
-    while (not eng->is_skip_current_event_process ())
-    {
-        std::pair<char *, ssize_t> buf_info = self->get_recv_buff ();
-        char *buf = buf_info.first;
-        size_t buflen = buf_info.second;
-        size_t recvlen = 0;
-
-        if (buflen == 0)
-        {
-            esock_debug_log ("recv buffer is full");
-            self->on_recv_complete (eng, sock, buf, 0); //通知上层处理数据
-            return;
-=======
   esock_debug_log("on_conn_recvable\n");
 
   while (not eng->is_skip_current_event_process()) {
@@ -63,49 +47,22 @@ static inline void __on_conn_recvable_helper (net_engine_t *eng, int sock, int e
         default:
           self->on_error_occur(eng, sock, errno);
           return;
->>>>>>> 0cc55b20ffef6473b8410c1899d2558dabfe174c
         }
+      }
 
-        while (recvlen < buflen)
-        {
-            ssize_t ret = ::recv (sock, buf + recvlen, buflen - recvlen, 0);
-            if (ret == -1)
-            {
-                switch (errno)
-                {
-                case EINTR:
-                    continue;
-                case EAGAIN:
-                    if (recvlen) self->on_recv_complete (eng, sock, buf, recvlen);
-                    return;
+      if (ret > 0)
+      {
+        recvlen += ret;
+        continue;
+      }
 
-                default:
-                    self->on_error_occur (eng, sock, errno);
-                    return;
-                }
-            }
-
-            if (ret > 0)
-            {
-                recvlen += ret;
-                continue;
-            }
-
-            // ret == 0
-            if (recvlen) self->on_recv_complete (eng, sock, buf, recvlen);
-
-            if (not eng->is_skip_current_event_process ()) self->on_peer_close (eng, sock);
-            return;
-        }
-
-<<<<<<< HEAD
-        esock_assert (recvlen == buflen);
+      //ret == 0
+      if (recvlen) 
         self->on_recv_complete (eng, sock, buf, recvlen);
-    }
-=======
+
       if (not eng->is_skip_current_event_process())
           self->on_peer_close(eng, sock);
-      return; //ret == 0
+      return; 
     }
 
     esock_assert(recvlen == buflen);
@@ -113,7 +70,6 @@ static inline void __on_conn_recvable_helper (net_engine_t *eng, int sock, int e
     esock_debug_log("readbuff full check again\n");
   } 
 
->>>>>>> 0cc55b20ffef6473b8410c1899d2558dabfe174c
 }
 
 //内部使用

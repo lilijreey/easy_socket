@@ -9,7 +9,6 @@
 
 #pragma once
 
-<<<<<<< HEAD
 #include "esock_sysinclude_fs.hpp"
 
 namespace esock
@@ -41,29 +40,11 @@ class noncopyable_t
     private:
     noncopyable_t (const noncopyable_t &);
     const noncopyable_t &operator= (const noncopyable_t &);
-=======
-#include <cassert>
-#include <cstdint>
-#include <errno.h>
-    
-namespace esock { namespace detail {
-
-#define esock_debug_log(fmt, ...) printf("%s:%d " fmt , __FILE__, __LINE__, ##__VA_ARGS__)
-//#define esock_debug_log(fmt, ...) 
-
-
-#define esock_assert(exp) assert(exp)
-
-class noncopyable_t {
-
-protected:
-	noncopyable_t() {}
-	~noncopyable_t() {}
-private:
-	noncopyable_t( const noncopyable_t& );
-	const noncopyable_t& operator = ( const noncopyable_t& );
->>>>>>> 0cc55b20ffef6473b8410c1899d2558dabfe174c
 };
+
+//#define esock_debug_log(fmt, ...) printf("%s:%d " fmt , __FILE__, __LINE__, ##__VA_ARGS__)
+//#define esock_debug_log(fmt, ...) 
+//#define esock_assert(exp) assert(exp)
 
 } // namespace detail
 

@@ -120,11 +120,11 @@ void net_engine_t::async_tcp_connect (const std::string &ip,
     on_conn_complete_fn (this, sock, user_arg);
     return;
 
-<<<<<<< HEAD
 error:
     if (sock != -1) close_socket (sock);
     on_conn_failed_fn (this, -1, errno, user_arg);
-=======
+}
+
 int net_engine_t::epoll_add_sock(int sock,
                     int events, 
                     void *on_recvable,
@@ -133,13 +133,13 @@ int net_engine_t::epoll_add_sock(int sock,
 {
   sockinfo_t *sinfo = sockpool.get_info(sock);
   if (sinfo->is_closed()) {
-    esock_set_error_msg("sock %d is closed", sock);
+    esock_report_error_msg("sock %d is closed", sock);
     errno = EINVAL;
     return -1;
   }
 
   if (sinfo->_eng == this && sinfo->_is_in_epoll) {
-    esock_set_error_msg("sock %d already add to eng", sock);
+    esock_report_error_msg("sock %d already add to eng", sock);
     errno = EEXIST;
     return -1;
   }
@@ -148,18 +148,20 @@ int net_engine_t::epoll_add_sock(int sock,
   epoll_event ev;
   //ev.events = events ;// | EPOLLET;
   //ET 模式有很多在man中没有写明的行为
-  ev.events = events | EPOLLET;
+  ev.events = events & ~EPOLLET; // remove ET if set
   ev.data.ptr = (void*)((uintptr_t)sinfo | !sinfo->_instance);
 
   int ret = epoll_ctl(_efd, EPOLL_CTL_ADD, sock, &ev);
   if (ret == -1)
   {
-    esock_set_syserr_msg("epoll_ctl add fd %d failed", sock);
+    esock_report_error_msg("epoll_ctl add fd %d failed", sock);
     return -1;
   };
 
   sinfo->_eng = this;
   sinfo->_is_in_epoll = 1;
+  sinfo->_is_set_epollin = events & EPOLLIN;
+  sinfo->_is_set_epollout = events & EPOLLOUT;
   sinfo->_on_recvable_fn = on_recvable;
   sinfo->_on_sendable_fn = on_sendable;
   sinfo->_arg = arg;
@@ -169,90 +171,6 @@ int net_engine_t::epoll_add_sock(int sock,
 
   esock_debug_log("add fd:%d in epoll ok\n", sock);
   return 0;
->>>>>>> 0cc55b20ffef6473b8410c1899d2558dabfe174c
-}
-
-int net_engine_t::epoll_add_sock (int sock, int events, void *on_recvable, void *on_sendable, void *arg)
-{
-<<<<<<< HEAD
-    sockinfo_t *sinfo = sockpool.get_info (sock);
-    if (sinfo->is_closed ())
-    {
-        esock_report_error_msg ("sock %d is closed", sock);
-        errno = EINVAL;
-        return -1;
-=======
-  if (is_stop())
-  {
-    return 0;
-  }
-
-  const int ev_cnt = epoll_wait(_efd, _events, MAX_EVENT_SIZE, wait_event_ms.count());
-  if (ev_cnt == -1)
-  {
-    esock_set_syserr_msg("epoll_wait fd:%d failed", _efd);
-    if (errno == EINTR)
-      return 0;
-    return -1;
-  }
-
-  sockinfo_t *sinfo = nullptr;
-  for (int i =0; i < ev_cnt; ++i)
-  {
-    //批处理时需要正确处理  see epoll(7)
-    //1.Starvation (ET)
-    //2.event cache 
-    
-    void *p = _events[i].data.ptr;
-    int events = _events[i].events;
-
-    int instance = (uintptr_t) p & 1;
-    sinfo = (sockinfo_t*) ((uintptr_t) p & (uintptr_t) ~1);
-
-    const int fd = sinfo->get_fd();
-
-    _current_fd = fd;
-    _is_skip_current_event_process =false;
-
-    esock_debug_log("fd %d has ev :%s %s %s\n", fd, events & EPOLLIN ? "EPOLLIN": "", events&EPOLLOUT ? "EPOLLOUT" : "", events&EPOLLERR?"EPOLLERR":"");
-
-    if (sinfo->is_closed()) {
-      esock_debug_log("process sock %d event but is closed, skip", fd);
-      continue;
->>>>>>> 0cc55b20ffef6473b8410c1899d2558dabfe174c
-    }
-
-    if (sinfo->_eng == this && sinfo->_is_in_epoll)
-    {
-        esock_report_error_msg ("sock %d already add to eng", sock);
-        errno = EEXIST;
-        return -1;
-    }
-
-    epoll_event ev;
-    ev.events = events & ~EPOLLET; // remove ET if set
-    ev.data.ptr = (void *)((uintptr_t)sinfo | !sinfo->_instance);
-
-    int ret = epoll_ctl (_efd, EPOLL_CTL_ADD, sock, &ev);
-    if (ret == -1)
-    {
-        esock_report_syserr_msg ("epoll_ctl add fd %d failed", sock);
-        return -1;
-    };
-
-    sinfo->_eng = this;
-    sinfo->_is_in_epoll = 1;
-    sinfo->_is_set_epollin = events & EPOLLIN;
-    sinfo->_is_set_epollout = events & EPOLLOUT;
-    sinfo->_on_recvable_fn = on_recvable;
-    sinfo->_on_sendable_fn = on_sendable;
-    sinfo->_arg = arg;
-
-    //后面添加instance 用来表示fd是否已过期,参考nginx
-    sinfo->_instance = !sinfo->_instance;
-
-    esock_debug_log ("add fd:%d in epoll ok\n", sock);
-    return 0;
 }
 
 int net_engine_t::process_event (std::chrono::milliseconds wait_event_ms)
