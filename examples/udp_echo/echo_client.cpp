@@ -8,122 +8,59 @@
 
 
 #include <esock.hpp>
-#include <esock_tcp_listener.hpp>
 using esock::net_engine_t;
 
-class EchoClient 
-  : public esock::async_tcp_client_hanndler_t<EchoClient>
+class echo_client_t : public esock::async_udp_handler_t<echo_client_t>
 {
- private:
-  std::string svrIp;
-  uint16_t svrPort;
-  enum {MAX_BUF=64};
-  char sendBuf[MAX_BUF];
-  char recvBuf[MAX_BUF];
-  int sendPos=0;
-  int sendDataLen=0;
-  int recvPos=0;
-  int _sock=-1;
-
 public:
-  ~EchoClient()
+  ~echo_client_t()
   {
-      if (_sock != -1)
-      {
-          printf("destroy close sock\n");
-          esock::close_socket(_sock);
-      }
+    if (_sock != -1)
+    {
+      esock::close_socket(_sock);
+      _sock = -1;
+    }
   }
 
- public: //callback
-   void on_conn_connecting(net_engine_t *eng, int sock)
-   {
-       assert(sock != -1);
-       printf("on connectiong fd:%d\n", sock);
-       _sock = sock;
-   }
+  void on_recv_complete(net_engine_t *eng, int sock, const char *data, size_t datalen, 
+                        sockaddr_storage *peeraddr, socklen_t addrlen)
+  {
+    printf("udp recv:%s %d", data, ++_cnt);
+    send();
+  }
 
-   void on_conn_complete(net_engine_t *eng, int sock)
-   {
-     printf("on conn %s:%d ok sock:%d\n", svrIp.c_str(), svrPort, sock);
-     sendPos = 0;
-     //send hello word\n
-     const char *msg = "hello world\n";
-     sendDataLen = strlen(msg);
-     memcpy(sendBuf, msg, sendDataLen);
-     post_send(eng, sock);
-   }
- 
-   void on_conn_failed(net_engine_t *eng, const int err)
-   {
-     printf("on conn %s:%d failed reconnct %s\n", svrIp.c_str(), svrPort, strerror(err));
-     sleep(1);
-     //reconnect
-     //eng->async_tcp_client("127.0.0.1", 5566, this);
-   }
- 
-   void on_recv_complete(net_engine_t *eng, int sock, const char *data, const size_t datalen)
-   {
-     //解包
-     //最大message len 63
-     //以\n结尾为一个message
-     recvPos += datalen;
-     if (recvPos == MAX_BUF || data[datalen-1] == '\n')
-     {
-       ((char*)data)[recvPos]='\0';
-       printf("recv msg:%s len:%d\n", recvBuf, recvPos);
-       recvPos = 0;
-     }
-   }
- 
-   void on_send_complete(net_engine_t *eng, int sock, const char *data, const ssize_t sendlen)
-   {
-       sendPos += sendlen;
-       if (sendPos < sendDataLen)
-       {
-           printf("continue send :%d", sendPos);
-       }
-       assert(sendPos <= sendDataLen);
-   }
- 
-   void on_peer_close(net_engine_t *eng, int sock)
-   {
-     printf("sock:%d peer closed, close local, reconnect\n", sock);
-     eng->close_socket(sock);
-     sleep(1);
-     eng->async_tcp_client("127.0.0.1", 5566, this);
-     //reconnect
-   }
- 
-   void on_error_occur(net_engine_t *eng, int sock, int error)
-   {
-     printf("sock:%d error, %s ", sock, strerror(error));
-     eng->close_socket(sock);
-   }
+  void send()
+  {
+      ::send(_sock, "hello\n", 6, 0);
+  }
 
-   //返回需要发送的数据
-   std::pair<char*, ssize_t> get_send_data()
-   {
-     return {sendBuf + sendPos, sendDataLen - sendPos};
-   }
- 
-   //需要处理buff满的情况
-   std::pair<char*, ssize_t> get_recv_buff() 
-   {
-     return {recvBuf+ recvPos, MAX_BUF-recvPos};
-   }
- 
+  void on_error_occur(net_engine_t *eng, int sock, int error)
+  {
+    printf("udp has error :%d",sock);
+  }
+
+  std::pair<char*, ssize_t> get_recv_buff() {
+    return {_buf, 64};
+  }
+
+  int _sock;
+  int _cnt{};
+  char _buf[64];
+
 };
+
 
 
 int main()
 {
-  EchoClient *client = new EchoClient;
+  echo_client_t *client = new echo_client_t;
 
   net_engine_t *eng = esock::make_net_engine();
-  eng->async_tcp_client("127.0.0.1", 5566, client);
-  //printf("delete client\n");
-  //delete client;
+  int sock = eng->add_async_udp_client("127.0.0.1", 5566, client);
+  assert(sock != -1);
+  client->_sock = sock;
+  client->send();
+  
 
   eng->process_event_loop(std::chrono::milliseconds(1000));
 

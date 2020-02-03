@@ -40,11 +40,8 @@ class noncopyable_t
     private:
     noncopyable_t (const noncopyable_t &);
     const noncopyable_t &operator= (const noncopyable_t &);
-};
 
-//#define esock_debug_log(fmt, ...) printf("%s:%d " fmt , __FILE__, __LINE__, ##__VA_ARGS__)
-//#define esock_debug_log(fmt, ...) 
-//#define esock_assert(exp) assert(exp)
+};
 
 } // namespace detail
 

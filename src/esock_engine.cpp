@@ -14,17 +14,17 @@
 
 #include "detail/esock_sockpool.hpp"
 #include "esock_engine.hpp"
+#include "esock_tcp_listener.hpp"
+//#include "esock_async_tcp_connection.hpp"
 
-namespace esock
-{
+namespace esock {
 
-net_engine_t *net_engine_t::make ()
+net_engine_t* net_engine_t::make(void)
 {
     net_engine_t *eng = new (std::nothrow) net_engine_t ();
     if (eng == nullptr) return nullptr;
 
-    if (eng->init () == -1)
-    {
+    if (eng->init () == -1) {
         delete eng;
         return nullptr;
     }
@@ -63,7 +63,7 @@ net_engine_t::~net_engine_t ()
 
 // static async_process
 
-void net_engine_t::async_tcp_connect (const std::string &ip,
+void net_engine_t::async_raw_tcp_connect (const std::string &ip,
                                       const uint16_t port,
                                       on_tcp_conn_complete_fn_t on_conn_complete_fn,
                                       on_tcp_conn_failed_fn_t on_conn_failed_fn,
@@ -84,7 +84,7 @@ void net_engine_t::async_tcp_connect (const std::string &ip,
     sock = socket (AF_INET, SOCK_STREAM, 0);
     if (-1 == sock)
     {
-        esock_report_syserr_msg ("create socket failed %d ", 3);
+        esock_report_syserr_msg ("create socket failed ");
         goto error;
     }
 
@@ -125,52 +125,147 @@ error:
     on_conn_failed_fn (this, -1, errno, user_arg);
 }
 
-int net_engine_t::epoll_add_sock(int sock,
-                    int events, 
-                    void *on_recvable,
-                    void *on_sendable,
-                    void *arg)
+
+int net_engine_t::make_udp_client_socket(const std::string &ip, const uint16_t port)
 {
-  sockinfo_t *sinfo = sockpool.get_info(sock);
-  if (sinfo->is_closed()) {
-    esock_report_error_msg("sock %d is closed", sock);
-    errno = EINVAL;
-    return -1;
-  }
+    // sockaddr_storage addr;
+    // TODO 抽象成一个函数 build_sock_addr
+    int sock = -1;
+    sockinfo_t *sinfo = nullptr;
+    sockaddr_in addr;
 
-  if (sinfo->_eng == this && sinfo->_is_in_epoll) {
-    esock_report_error_msg("sock %d already add to eng", sock);
-    errno = EEXIST;
-    return -1;
-  }
+    if (not init_sockaddr_in (addr, ip, port))
+    {
+        esock_report_error_msg ("an invalid ip %s", ip.c_str ());
+        errno = EINVAL;
+        return -1;
+    }
+
+    sock = socket (AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if (-1 == sock)
+    {
+        esock_report_syserr_msg ("create socket failed ");
+        return -1;
+    }
+
+    if (-1 == set_sock_nonblocking (sock))
+    {
+        close_socket(sock);
+        esock_report_syserr_msg ("set socket %d nonblock failed", sock);
+        return -1;
+    }
 
 
-  epoll_event ev;
-  //ev.events = events ;// | EPOLLET;
-  //ET 模式有很多在man中没有写明的行为
-  ev.events = events & ~EPOLLET; // remove ET if set
-  ev.data.ptr = (void*)((uintptr_t)sinfo | !sinfo->_instance);
+    if (-1 == ::connect (sock, (sockaddr *)&addr, sizeof (addr)))
+    {
+      close_socket (sock);
+      esock_report_syserr_msg ("connect udp socket %d failed", sock);
+      return -1;
+    }
 
-  int ret = epoll_ctl(_efd, EPOLL_CTL_ADD, sock, &ev);
-  if (ret == -1)
-  {
-    esock_report_error_msg("epoll_ctl add fd %d failed", sock);
-    return -1;
-  };
+    // sinfo init
+    sinfo = sockpool.get_info (sock);
+    sinfo->init(ESOCKTYPE_UDP_CONNECT);
+    sinfo->_state = ESOCKSTATE_ESTABLISHED;
 
-  sinfo->_eng = this;
-  sinfo->_is_in_epoll = 1;
-  sinfo->_is_set_epollin = events & EPOLLIN;
-  sinfo->_is_set_epollout = events & EPOLLOUT;
-  sinfo->_on_recvable_fn = on_recvable;
-  sinfo->_on_sendable_fn = on_sendable;
-  sinfo->_arg = arg;
 
-  //后面添加instance 用来表示fd是否已过期,参考nginx
-  sinfo->_instance = !sinfo->_instance;
+    return sock;
+}
 
-  esock_debug_log("add fd:%d in epoll ok\n", sock);
-  return 0;
+
+int net_engine_t::make_udp_server_socket(const std::string &ip, const uint16_t port)
+{
+    // sockaddr_storage addr;
+    // TODO 抽象成一个函数 build_sock_addr
+    int sock = -1;
+    sockinfo_t *sinfo = nullptr;
+    sockaddr_in addr;
+
+    if (not init_sockaddr_in (addr, ip, port))
+    {
+        esock_report_error_msg ("an invalid ip %s", ip.c_str ());
+        errno = EINVAL;
+        return -1;
+    }
+
+    sock = socket (AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if (-1 == sock)
+    {
+        esock_report_syserr_msg ("create socket failed ");
+        return -1;
+    }
+
+    if (-1 == set_sock_nonblocking (sock))
+    {
+        esock_report_syserr_msg ("set socket %d nonblock failed", sock);
+        ::close(sock);
+        return -1;
+    }
+
+    if (-1 == ::bind(sock, (sockaddr *)&addr, sizeof (addr)))
+    {
+      esock_report_syserr_msg ("bind udp socket %d failed", sock);
+      ::close(sock);
+      return -1;
+    }
+
+    if (-1 == set_sock_reuseaddr (sock))
+    {
+        esock_report_syserr_msg ("setsockopt fd %d SO_REUSEADDR failed, close it", sock);
+        ::close (sock);
+        return -1;
+    }
+
+    // sinfo init
+    sinfo = sockpool.get_info (sock);
+    sinfo->init(ESOCKTYPE_UDP_CONNECT);
+    sinfo->_state = ESOCKSTATE_ESTABLISHED;
+
+
+    return sock;
+}
+
+int net_engine_t::epoll_add_sock (int sock, int events, void *on_recvable, void *on_sendable, void *arg)
+{
+    sockinfo_t *sinfo = sockpool.get_info (sock);
+    if (sinfo->is_closed ())
+    {
+        esock_report_error_msg ("sock %d is closed", sock);
+        errno = EINVAL;
+        return -1;
+    }
+
+    if (sinfo->_eng == this && sinfo->_is_in_epoll)
+    {
+        esock_report_error_msg ("sock %d already add to eng", sock);
+        errno = EEXIST;
+        return -1;
+    }
+
+    epoll_event ev;
+    ev.events = events & ~EPOLLET; // remove ET if set
+    ev.data.ptr = (void *)((uintptr_t)sinfo | !sinfo->_instance);
+
+    int ret = epoll_ctl (_efd, EPOLL_CTL_ADD, sock, &ev);
+    if (ret == -1)
+    {
+        esock_report_syserr_msg ("epoll_ctl add fd %d failed", sock);
+        return -1;
+    };
+
+    sinfo->_eng = this;
+    sinfo->_is_in_epoll = 1;
+    sinfo->_is_set_epollin = events & EPOLLIN;
+    sinfo->_is_set_epollout = events & EPOLLOUT;
+    sinfo->_on_recvable_fn = on_recvable;
+    sinfo->_on_sendable_fn = on_sendable;
+    sinfo->_arg = arg;
+
+    //后面添加instance 用来表示fd是否已过期,参考nginx
+    sinfo->_instance = !sinfo->_instance;
+
+    esock_debug_log ("add fd:%d in epoll ok\n", sock);
+    return 0;
 }
 
 int net_engine_t::process_event (std::chrono::milliseconds wait_event_ms)
@@ -258,6 +353,11 @@ int net_engine_t::process_event (std::chrono::milliseconds wait_event_ms)
                 ((on_tcp_conn_recvable_fn_t)sinfo->_on_recvable_fn) (this, fd, 0, sinfo->_arg);
                 break;
 
+            case ESOCKTYPE_UDP_CONNECT:
+                esock_assert(sinfo->_state == ESOCKSTATE_ESTABLISHED);
+                ((on_udp_conn_recvable_fn_t)sinfo->_on_recvable_fn) (this, fd, 0, sinfo->_arg);
+                break;
+
             default:
                 esock_assert (false);
                 close_socket (fd);
@@ -281,6 +381,10 @@ int net_engine_t::process_event (std::chrono::milliseconds wait_event_ms)
                 ((on_tcp_conn_sendable_fn_t)sinfo->_on_sendable_fn) (this, fd, 0, sinfo->_arg);
                 break;
 
+            case ESOCKTYPE_UDP_CONNECT:
+                esock_assert(sinfo->_state == ESOCKSTATE_ESTABLISHED);
+                ((on_udp_conn_sendable_fn_t)sinfo->_on_sendable_fn) (this, fd, 0, sinfo->_arg);
+                break;
             default:
                 esock_assert (false);
             }
@@ -341,7 +445,7 @@ int net_engine_t::close_socket (int fd)
     return 0;
 }
 
-int net_engine_t::add_tcp_listener (tcp_listener_t *listener,
+int net_engine_t::add_raw_tcp_server(tcp_listener_t *listener,
                                     on_tcp_listener_acceptable_fn_t on_acceptable_fn,
                                     void *arg)
 {
@@ -423,6 +527,13 @@ int net_engine_t::del_sendable_ev (int sock)
 
     esock_debug_log ("del sendable fd:%d in epoll ok\n", sock);
     return 0;
+}
+
+bool net_engine_t::is_add_sock(const int sock)
+{
+  //TODO
+  return false;
+
 }
 
 } // end namespace esock

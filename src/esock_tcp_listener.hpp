@@ -15,7 +15,6 @@
 namespace esock
 {
 
-class net_engine_t;
 class tcp_listener_t : detail::noncopyable_t
 {
     public:

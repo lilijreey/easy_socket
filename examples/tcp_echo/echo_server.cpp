@@ -6,16 +6,16 @@
 using esock::net_engine_t;
 using esock::tcp_listener_t;
 
-class EchoServer;
+class echo_server_t;
 
 //接受\n结尾字符，然后发送回去
-class EchoServerConn
-  : public esock::tcp_server_conn_handler_t<EchoServerConn>
+class echo_server_conn_t
+  : public esock::async_tcp_connection_t<echo_server_conn_t>
 {
  public:
-    EchoServerConn(int sock, EchoServer *svr) 
+    echo_server_conn_t(int sock, echo_server_t *svr) 
         :_sock(sock),_svr(svr) {}
-    ~EchoServerConn()
+    ~echo_server_conn_t()
     {
         if (_sock) {
             esock::close_socket(_sock);
@@ -40,7 +40,7 @@ class EchoServerConn
    //需要处理buff满的情况
    std::pair<char*, ssize_t> get_recv_buff() 
    {
-       printf("get recv buf\n");
+       //printf("get recv buf\n");
        return {buf+recvPos, MAX_BUF-recvPos};
    }
  
@@ -52,18 +52,18 @@ class EchoServerConn
  private:
     enum {MAX_BUF=64};
     int _sock=-1;
-    EchoServer *_svr;
+    echo_server_t *_svr;
     char buf[MAX_BUF];
     int recvPos=0;
     int sendPos=0;
 };
 
-class EchoServer 
-  : public esock::tcp_server_accept_handler_t<EchoServer, EchoServerConn>
+class echo_server_t 
+  : public esock::async_tcp_server_t<echo_server_t, echo_server_conn_t>
 {
  private:
     esock::tcp_listener_t *_listener=nullptr;
-    std::unordered_set<EchoServerConn*> _conns;
+    std::unordered_set<echo_server_conn_t*> _conns;
 
  public:
   bool init(const std::string &ip, uint16_t port)
@@ -72,7 +72,7 @@ class EchoServer
       return _listener != nullptr;
   }
 
-  ~EchoServer() {
+  ~echo_server_t() {
       esock::unmake_tcp_listener(_listener);
       for (auto conn : _conns)
       {
@@ -86,7 +86,7 @@ class EchoServer
 
   void listen() {_listener->start_listen();}
 
-  void closeConn(EchoServerConn *conn)
+  void closeConn(echo_server_conn_t *conn)
   {
       _conns.erase(conn);
       delete conn;
@@ -94,11 +94,11 @@ class EchoServer
 
  public:
   //callback
-  EchoServerConn*
+  echo_server_conn_t*
   on_accept_complete(net_engine_t *eng, tcp_listener_t *ins, int sock, sockaddr_storage addr)
   {
       printf("accept new conn fd %d\n", sock);
-      EchoServerConn *conn = new EchoServerConn(sock, this);
+      echo_server_conn_t *conn = new echo_server_conn_t(sock, this);
       _conns.insert(conn);
       return conn;
   }
@@ -111,7 +111,7 @@ class EchoServer
 };
 
 
-void EchoServerConn::on_recv_complete(net_engine_t *eng, int sock, const char *data, const size_t datalen)
+void echo_server_conn_t::on_recv_complete(net_engine_t *eng, int sock, const char *data, const size_t datalen)
 {
     assert(datalen>0);
     recvPos += datalen;
@@ -121,6 +121,7 @@ void EchoServerConn::on_recv_complete(net_engine_t *eng, int sock, const char *d
             eng->stop_event_loop();
 
         assert(sendPos == 0);
+        printf("recv msg:%s",data);
         //TODO disabel recv
         post_send(eng, sock);
     } 
@@ -133,13 +134,13 @@ void EchoServerConn::on_recv_complete(net_engine_t *eng, int sock, const char *d
 }
 
  
-void EchoServerConn::on_peer_close(net_engine_t *eng, int sock)
+void echo_server_conn_t::on_peer_close(net_engine_t *eng, int sock)
 {
     printf("conn fd:%d peer closed\n", sock);
     _svr->closeConn(this);
 }
 
-void EchoServerConn::on_error_occur(net_engine_t *eng, int sock, int error)
+void echo_server_conn_t::on_error_occur(net_engine_t *eng, int sock, int error)
 {
     printf("conn fd:%d error:%s\n", sock, strerror(error));
     _svr->closeConn(this);
@@ -149,7 +150,7 @@ int main()
 {
   std::unique_ptr<net_engine_t> eng(esock::make_net_engine());
 
-  EchoServer svr;
+  echo_server_t svr;
   if (not svr.init("127.0.0.1", 5566))
   {
       exit(-1);

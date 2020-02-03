@@ -25,6 +25,17 @@ static inline bool init_sockaddr_in (sockaddr_in &addr, const std::string &ip, u
     return 1 == inet_pton (AF_INET, ip.c_str (), &(addr.sin_addr.s_addr));
 }
 
+
+//static inline int make_tcp_socket()
+//{
+//  return ::socket (AF_INET, SOCK_STREAM, IPPROTO_TCP);
+//}
+
+//static inline int make_udp_socket()
+//{
+//  return ::socket (AF_INET, DSOCK_DGRAM, IPPROTO_UDP);
+//}
+
 static inline int set_sock_nonblocking (int sock)
 {
     int flags = fcntl (sock, F_GETFL, 0);

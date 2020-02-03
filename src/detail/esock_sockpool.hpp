@@ -9,6 +9,7 @@
 #include "../esock_socket.hpp"
 #include "esock_error.hpp"
 #include "esock_utility.hpp"
+#include "esock_sockpool.hpp"
 
 namespace esock
 {
@@ -17,7 +18,8 @@ enum sockinfo_type_t
 {
     ESOCKTYPE_NONE = 0,
     ESOCKTYPE_TCP_LISTENER = 2,
-    ESOCKTYPE_TCP_CONNECT = 3
+    ESOCKTYPE_TCP_CONNECT = 3,
+    ESOCKTYPE_UDP_CONNECT = 4,
 };
 
 enum sockinfo_state_t

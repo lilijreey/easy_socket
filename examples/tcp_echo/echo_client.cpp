@@ -10,8 +10,9 @@
 #include <esock.hpp>
 using esock::net_engine_t;
 
+
 class EchoClient 
-  : public esock::async_tcp_client_hanndler_t<EchoClient>
+  : public esock::async_tcp_client_t<EchoClient>
 {
  private:
   std::string svrIp;
@@ -94,14 +95,6 @@ public:
        assert(sendPos <= sendDataLen);
    }
  
-   void on_peer_close(net_engine_t *eng, int sock)
-   {
-     printf("sock:%d peer closed, close local, reconnect\n", sock);
-     eng->close_socket(sock);
-     sleep(1);
-     eng->async_tcp_client("127.0.0.1", 5566, this);
-     //reconnect
-   }
  
    void on_error_occur(net_engine_t *eng, int sock, int error)
    {
@@ -121,7 +114,16 @@ public:
      return {recvBuf+ recvPos, MAX_BUF-recvPos};
    }
  
+   void on_peer_close(net_engine_t *eng, int sock)
+   {
+     printf("sock:%d peer closed, close local, reconnect\n", sock);
+     eng->close_socket(sock);
+     sleep(1);
+     eng->add_async_tcp_client("127.0.0.1", 5566, this);
+     //reconnect
+   }
 };
+
 
 
 void handle_esock_error_msg(const char *msg)
@@ -138,9 +140,7 @@ int main()
   EchoClient *client = new EchoClient;
 
   net_engine_t *eng = esock::make_net_engine();
-  eng->async_tcp_client("127.0.0", 5566, client);
-  //printf("delete client\n");
-  //delete client;
+  eng->add_async_tcp_client("127.0.0.1", 5566, client);
 
   eng->process_event_loop(std::chrono::milliseconds(1000));
 
