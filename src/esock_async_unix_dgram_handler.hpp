@@ -1,3 +1,5 @@
+//@file unix domain socket support
+
 #pragma once
 
 #include "detail/esock_sysinclude_fs.hpp"
@@ -14,14 +16,14 @@ namespace esock {
  *   std::pair<char*, ssize_t> get_recv_buff() = 0;
  */
 template <class subclass_t>
-struct async_udp_handler_t
+struct async_unix_dgram_handler_t
 {
  public:
   static void on_conn_recvable_helper(net_engine_t *eng, int sock, int err, void *arg)
   {
     esock_debug_log ("udp_on_conn_recvable\n");
     subclass_t* self = (subclass_t*)(arg);
-    sockaddr_storage addr;
+    sockaddr_un addr={0};
     socklen_t addrlen = sizeof (addr);
 
     //TODO socket公平性是否会一直处理一个socket
@@ -37,8 +39,7 @@ struct async_udp_handler_t
         self->on_recv_complete (eng, sock, buf, 0, NULL, 0); //通知上层处理数据
         return;
       }
-
-      ssize_t ret = ::recvfrom (sock, buf, buflen, 0, (sockaddr *)&addr, &addrlen);
+      ssize_t ret = ::recvfrom (sock, buf, buflen, 0, (sockaddr*)&addr, &addrlen);
       if (ret > 0) {
         self->on_recv_complete (eng, sock, buf, ret, &addr, addrlen);
         continue;
@@ -60,19 +61,14 @@ struct async_udp_handler_t
 
   static void on_conn_sendable_helper(net_engine_t *eng, int sock, int err, void *arg)
   {
-    esock_debug_log("can not watch EPOLLOUT in udp socket");
-    //不处理该情况
+    //发送待发送数据
+    esock_debug_log ("fd:%d on_sendable\n", sock);
+    //TODO
   }
 
-  static constexpr bool is_base_of_async_udp_handler_t = true;
+  static constexpr bool is_base_of_async_unix_dgram_handler_t = true;
 
 };
-
-
-//template <class T>
-//struct is_base_of_async_udp_handler {
-//  static constexpr bool value = typename T::is_base_of_async_udp_handler_t;
-//};
 
 
 } //end namespace esock

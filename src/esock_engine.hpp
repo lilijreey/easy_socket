@@ -116,14 +116,17 @@ class net_engine_t : detail::noncopyable_t
 
  public:
   //TODO 非阻塞UDP会出现EBLOCK吗
-  template <class async_udp_client_subclass >
-  int add_async_udp_client (const std::string &dst_ip, const uint16_t dst_port, async_udp_client_subclass *ins)
+  template <class async_udp_handler_subclass_t >
+  int add_async_udp_client (const std::string &dst_ip, const uint16_t dst_port, async_udp_handler_subclass_t *ins)
   {
+    static_assert(async_udp_handler_subclass_t::is_base_of_async_udp_handler_t, "need an async_upd_handler_t type");
     int sock = make_udp_client_socket(dst_ip, dst_port);
+    if (sock == -1) 
+      return -1;
     if (-1 == epoll_add_sock (sock,
                               EPOLLIN,
-                              (void *)async_udp_client_subclass::on_conn_recvable_helper,
-                              (void *)async_udp_client_subclass::on_conn_sendable_helper,
+                              (void *)async_udp_handler_subclass_t::on_conn_recvable_helper,
+                              (void *)async_udp_handler_subclass_t::on_conn_sendable_helper,
                               ins)) 
     {
       //ON_BUG
@@ -136,14 +139,17 @@ class net_engine_t : detail::noncopyable_t
   }
 
 
-  template <class async_udp_connection_subclass>
-  int add_async_udp_server(const std::string &src_ip, const uint16_t src_port, async_udp_connection_subclass *ins)
+  template <class async_udp_handler_subclass_t>
+  int add_async_udp_server(const std::string &src_ip, const uint16_t src_port, async_udp_handler_subclass_t *ins)
   {
+    static_assert(async_udp_handler_subclass_t::is_base_of_async_udp_handler_t, "need an async_upd_handler_t type");
     int sock = make_udp_server_socket(src_ip, src_port);
+    if (sock == -1) 
+      return -1;
     if (-1 == epoll_add_sock (sock,
                               EPOLLIN,
-                              (void *)async_udp_connection_subclass::on_conn_recvable_helper,
-                              (void *)async_udp_connection_subclass::on_conn_sendable_helper,
+                              (void *)async_udp_handler_subclass_t::on_conn_recvable_helper,
+                              (void *)async_udp_handler_subclass_t::on_conn_sendable_helper,
                               ins)) 
     {
       //ON_BUG
@@ -155,6 +161,63 @@ class net_engine_t : detail::noncopyable_t
     return sock;
   }
 
+ public:
+  //TODO 非阻塞UDP会出现EBLOCK吗
+  template <class async_unix_dgram_handler_subclass_t>
+  int add_async_unix_dgram_client(const std::string &dst_path, 
+                                  const std::string &src_path, async_unix_dgram_handler_subclass_t *ins)
+  {
+    static_assert(async_unix_dgram_handler_subclass_t::is_base_of_async_unix_dgram_handler_t, 
+                  "need an async_unix_dgram_handler_t subclass type");
+    int sock = make_unix_dgram_client_socket(dst_path, src_path);
+    if (sock == -1) 
+      return -1;
+
+    if (-1 == epoll_add_sock (sock,
+                              EPOLLIN,
+                              (void *)async_unix_dgram_handler_subclass_t::on_conn_recvable_helper,
+                              (void *)async_unix_dgram_handler_subclass_t::on_conn_sendable_helper,
+                              ins)) 
+    {
+      //ON_BUG
+      close_socket (sock);
+      esock_report_error_msg("add unix socket %d to eng failed", sock);
+      return -1;
+    } 
+
+    return sock;
+  }
+
+  //template <class T>
+  //int add_async_unix_dgram_client(const std::string &dst_path, 
+  //                                async_unix_dgram_handler_subclass_t *ins)
+  //{
+  //  return add_async_unix_dgram_client(dst_path, "", ins);
+  //}
+
+  template <class async_unix_dgram_handler_subclass_t>
+  int add_async_unix_dgram_server(const std::string &path, async_unix_dgram_handler_subclass_t *ins)
+  {
+    static_assert(async_unix_dgram_handler_subclass_t::is_base_of_async_unix_dgram_handler_t, 
+                  "need an async_unix_dgram_handler_t subclass type");
+
+    int sock = make_unix_dgram_server_socket(path);
+    if (sock == -1) 
+      return -1;
+    if (-1 == epoll_add_sock (sock,
+                              EPOLLIN,
+                              (void *)async_unix_dgram_handler_subclass_t::on_conn_recvable_helper,
+                              (void *)async_unix_dgram_handler_subclass_t::on_conn_sendable_helper,
+                              ins)) 
+    {
+      //ON_BUG
+      close_socket (sock);
+      esock_report_error_msg("add unix socket %d to eng failed", sock);
+      return -1;
+    } 
+
+    return sock;
+  }
 
  public:
   bool is_runing () const { return not _is_stop; }
@@ -208,6 +271,9 @@ class net_engine_t : detail::noncopyable_t
  private:
   int make_udp_client_socket(const std::string &dip, const uint16_t dport);
   int make_udp_server_socket(const std::string &sip, const uint16_t sport);
+
+  int make_unix_dgram_client_socket(const std::string &dst_path, const std::string &src_path);
+  int make_unix_dgram_server_socket(const std::string &path);
 
 
  private:

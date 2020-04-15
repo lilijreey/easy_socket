@@ -1,13 +1,10 @@
 /**
  * @file esock_sysinclude_fs.hpp
- * @author your name (you@domain.com)
- * @brief For accelerate compile
  * @date 2019-07-27
  *
  */
 
 #include <arpa/inet.h>
-#include <fcntl.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <sys/epoll.h>
@@ -16,6 +13,8 @@
 #include <sys/stat.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
+#include <sys/un.h>
+#include <fcntl.h>
 #include <unistd.h>
 
 #include <cassert>

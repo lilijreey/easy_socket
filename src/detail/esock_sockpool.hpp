@@ -20,6 +20,7 @@ enum sockinfo_type_t
     ESOCKTYPE_TCP_LISTENER = 2,
     ESOCKTYPE_TCP_CONNECT = 3,
     ESOCKTYPE_UDP_CONNECT = 4,
+    ESOCKTYPE_UNIX_DGRAM = 5,
 };
 
 enum sockinfo_state_t

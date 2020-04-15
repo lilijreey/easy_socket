@@ -7,15 +7,11 @@
  *
  */
 
-#include <arpa/inet.h>
-#include <strings.h>
-#include <sys/socket.h>
-#include <sys/types.h>
 
+#include "detail/esock_sysinclude_fs.hpp"
 #include "detail/esock_sockpool.hpp"
 #include "esock_engine.hpp"
 #include "esock_tcp_listener.hpp"
-//#include "esock_async_tcp_connection.hpp"
 
 namespace esock {
 
@@ -125,6 +121,106 @@ error:
     on_conn_failed_fn (this, -1, errno, user_arg);
 }
 
+static inline bool is_valid_unix_path(const std::string &path)
+{
+  sockaddr_un addr;
+  return not path.empty() && path.length() < sizeof(addr.sun_path);
+}
+
+int net_engine_t::make_unix_dgram_client_socket(const std::string &dst_path, const std::string &src_path)
+{
+  if (not is_valid_unix_path(dst_path))  
+  {
+    esock_report_error_msg("invalid path argument");
+    return -1;
+  }
+
+  sockaddr_un addr; 
+  int sock = socket(AF_UNIX, SOCK_DGRAM, 0);
+  if (sock == -1)
+  {
+    esock_report_syserr_msg("create unix socket failed");
+    return -1;
+  }
+
+  //bind src path
+  if (not src_path.empty())
+  {
+    if (not is_valid_unix_path(src_path))
+    {
+      esock_report_error_msg("invalid path argument");
+      ::close(sock);
+      return -1;
+    }
+    unlink(src_path.c_str());
+
+    bzero(&addr,sizeof(addr));
+    addr.sun_family = AF_UNIX;
+    strncpy(addr.sun_path, src_path.c_str(), sizeof(addr.sun_path) - 1);
+
+    if (-1 == bind(sock, (const struct sockaddr *)&addr, sizeof(addr)))
+    {
+      esock_report_syserr_msg("unix socket bind path [%s] failed", src_path.c_str());
+      ::close(sock);
+      return -1;
+    }
+  }
+
+
+  //connect
+  bzero(&addr,sizeof(addr));
+  addr.sun_family = AF_UNIX;
+  strncpy(addr.sun_path, dst_path.c_str(), sizeof(addr.sun_path) - 1);
+  if (-1 == connect (sock, (const struct sockaddr *) &addr, sizeof(addr)))
+  {
+    esock_report_syserr_msg("connect to unix socket:%s failed", dst_path.c_str());
+    ::close(sock);
+    return -1;
+  }
+
+  sockinfo_t *sinfo = sockpool.get_info (sock);
+  sinfo->init(ESOCKTYPE_UDP_CONNECT);
+  sinfo->_state = ESOCKSTATE_ESTABLISHED;
+
+  return sock;
+}
+
+int net_engine_t::make_unix_dgram_server_socket(const std::string &path)
+{
+  sockaddr_un addr; 
+  if (path.empty() || path.length() > sizeof(addr.sun_path)-1)
+  {
+    esock_report_error_msg("invalid path argument");
+    return -1;
+  }
+
+  int sock = socket(AF_UNIX, SOCK_DGRAM, 0);
+  if (sock == -1)
+  {
+    esock_report_syserr_msg("create unix socket failed");
+    return -1;
+  }
+
+
+  //bind
+  bzero(&addr,sizeof(addr));
+  addr.sun_family = AF_UNIX;
+  strncpy(addr.sun_path, path.c_str(), sizeof(addr.sun_path) - 1);
+
+  unlink(path.c_str());
+
+  if (-1 == bind(sock, (const struct sockaddr *)&addr, sizeof(addr)))
+  {
+    esock_report_syserr_msg("unix socket bind path [%s] failed", path.c_str());
+    return -1;
+  }
+
+  sockinfo_t *sinfo = sockpool.get_info (sock);
+  sinfo->init(ESOCKTYPE_UDP_CONNECT);
+  sinfo->_state = ESOCKSTATE_ESTABLISHED;
+
+  return sock;
+}
 
 int net_engine_t::make_udp_client_socket(const std::string &ip, const uint16_t port)
 {
@@ -176,8 +272,6 @@ int net_engine_t::make_udp_client_socket(const std::string &ip, const uint16_t p
 int net_engine_t::make_udp_server_socket(const std::string &ip, const uint16_t port)
 {
     // sockaddr_storage addr;
-    // TODO 抽象成一个函数 build_sock_addr
-    int sock = -1;
     sockinfo_t *sinfo = nullptr;
     sockaddr_in addr;
 
@@ -188,7 +282,7 @@ int net_engine_t::make_udp_server_socket(const std::string &ip, const uint16_t p
         return -1;
     }
 
-    sock = socket (AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    int sock = socket (AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (-1 == sock)
     {
         esock_report_syserr_msg ("create socket failed ");
